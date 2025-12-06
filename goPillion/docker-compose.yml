@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  auth-service:
+    build:
+      context: .
+      dockerfile: ./node-service/auth-service/Dockerfile
+    container_name: auth-service
+    ports:
+      - "3001:3000"
+
+  user-service:
+    build:
+      context: .
+      dockerfile: ./node-service/user-service/Dockerfile
+    container_name: user-service
+    ports:
+      - "3002:3000"
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: ./node-service/notification-service/Dockerfile
+    container_name: notification-service
+    ports:
+      - "3003:3000"
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ./node-service/api-gateway/Dockerfile
+    container_name: api-gateway
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth-service
+      - user-service
+      - notification-service

@@ -2,7 +2,7 @@ import { Model, DataTypes } from "sequelize";
 import sequelize from "../database_connection/db.connection";
 
 class User extends Model {
-  public id!: number;
+  public id!: string;
   public mobile!: string;
   public name?: string;
   public role!: "USER" | "DRIVER" | "ADMIN";
@@ -11,8 +11,8 @@ class User extends Model {
 User.init(
   {
     id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
     mobile: {

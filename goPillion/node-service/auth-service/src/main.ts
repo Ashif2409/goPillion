@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import sequelize from "./database_connection/db.connection";
-// import authRoutes from "./routes/auth";
+import { otpRoutes} from "./routes/otp.route";
 
 const app = express();
 app.use(express.json());
@@ -20,7 +20,7 @@ app.use(express.json());
   }
 })();
 
-// app.use("/api/auth", authRoutes);
+app.use("/api/auth", otpRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

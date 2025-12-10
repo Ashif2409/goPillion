@@ -4,7 +4,7 @@ import { sendOTP } from '../services/otpServices';
 import UserOTP from "../models/UserOTP";
 import User from "../models/User";
 import bcrypt from 'bcrypt';
-import { generateToken } from "../utils/generateToken";
+import { generateRefreshToken, generateToken } from "../utils/generateToken";
 
 
 export const sendOTPController = async (req: Request, res: Response) => {
@@ -53,19 +53,17 @@ export const verifyOTPController = async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, message: "Mobile and OTP are required" });
         }
 
-        // Validate OTP
-        if (typeof otp !== 'string' || !/^\d+$/.test(otp)) {
+        if (!/^\d+$/.test(otp)) {
             return res.status(400).json({ success: false, message: "Invalid OTP format" });
         }
 
-        // Find latest OTP entry
         otpRecord = await UserOTP.findOne({
             where: { mobile },
-            order: [['createdAt', 'DESC']]
+            order: [["createdAt", "DESC"]]
         });
 
         if (!otpRecord) {
-            return res.status(400).json({ success: false, message: "OTP not found. Please request a new one." });
+            return res.status(400).json({ success: false, message: "OTP not found" });
         }
 
         if (otpRecord.verified) {
@@ -74,11 +72,7 @@ export const verifyOTPController = async (req: Request, res: Response) => {
 
         if (new Date() > otpRecord.expiresAt) {
             await otpRecord.destroy();
-            return res.status(400).json({ success: false, message: "OTP expired. Please request a new one." });
-        }
-
-        if (!otpRecord.otp) {
-            return res.status(500).json({ success: false, message: "Server error: Invalid OTP record" });
+            return res.status(400).json({ success: false, message: "OTP expired" });
         }
 
         const isMatch = await bcrypt.compare(otp, otpRecord.otp);
@@ -86,50 +80,49 @@ export const verifyOTPController = async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, message: "Invalid OTP" });
         }
 
-        // Mark OTP verified
         otpRecord.verified = true;
         await otpRecord.save();
 
-        // Find or create user
         user = await User.findOne({ where: { mobile } });
 
         if (!user) {
             user = await User.create({ mobile, role: "USER" });
-            userCreated = true; // Track newly created user
+            userCreated = true;
         }
 
-        const token = generateToken(user);
+        //  Create tokens
+        const accessToken = generateToken(user);
+        const refreshToken = generateRefreshToken(user.id);
+
+        //  Send refresh token as secure cookie
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "strict",
+            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        });
 
         return res.json({
             success: true,
-            token,
+            accessToken,
             message: "OTP verified successfully"
         });
 
-    } catch (err:Error|any) {
+    } catch (err) {
         console.error("OTP verification error:", err);
 
-        // ROLLBACK LOGIC
         try {
-            if (userCreated && user) {
-                await user.destroy(); // Delete newly created user
-                console.log("Rollback: Deleted user because of error");
-            }
-
+            if (userCreated && user) await user.destroy();
             if (otpRecord && otpRecord.verified) {
                 otpRecord.verified = false;
                 await otpRecord.save();
-                console.log("Rollback: OTP marked back to unverified");
             }
-
         } catch (rollbackErr) {
             console.error("Rollback error:", rollbackErr);
         }
 
-        return res.status(500).json({
-            success: false,
-            message: "Failed to verify OTP"
-        });
+        return res.status(500).json({ success: false, message: "Failed to verify OTP" });
     }
 };
+
 

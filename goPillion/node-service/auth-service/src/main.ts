@@ -4,9 +4,11 @@ dotenv.config();
 
 import sequelize from "./database_connection/db.connection";
 import { otpRoutes} from "./routes/otp.route";
+import { setupSwagger } from "./swagger/swagger";
 
 const app = express();
 app.use(express.json());
+setupSwagger(app);
 
 (async () => {
   try {

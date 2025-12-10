@@ -58,8 +58,7 @@ export const verifyOTPController = async (req: Request, res: Response) => {
         }
 
         otpRecord = await UserOTP.findOne({
-            where: { mobile },
-            order: [["createdAt", "DESC"]]
+            where: { mobile }
         });
 
         if (!otpRecord) {
@@ -90,9 +89,17 @@ export const verifyOTPController = async (req: Request, res: Response) => {
             userCreated = true;
         }
 
+        const userId = (user as any).id ?? user?.dataValues?.id;
+
+        if (!userId) {
+            return res.status(500).json({ success: false, message: "User ID undefined" });
+        }
+        if (userId === undefined) {
+            return res.status(500).json({ success: false, message: "User ID undefined" });
+        }
         //  Create tokens
-        const accessToken = generateToken(user);
-        const refreshToken = generateRefreshToken(user.id);
+        const accessToken = generateToken(userId);
+        const refreshToken = generateRefreshToken(userId);
 
         //  Send refresh token as secure cookie
         res.cookie("refreshToken", refreshToken, {

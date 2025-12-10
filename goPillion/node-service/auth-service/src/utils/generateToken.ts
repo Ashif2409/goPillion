@@ -1,11 +1,10 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 dotenv.config();
-export const generateToken = (user: { id: string;mobile:string; role: string }) => {
+export const generateToken = (id:string) => {
   return jwt.sign(
     {
-      id: user.id,
-      role: user.role,
+      id
     },
     process.env.JWT_SECRET!,
     { expiresIn: "7d" }

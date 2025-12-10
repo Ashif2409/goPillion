@@ -4,6 +4,7 @@ dotenv.config();
 
 import sequelize from "./database_connection/db.connection";
 import { otpRoutes} from "./routes/otp.route";
+import { profileRoutes } from "./routes/profile.route";
 import { setupSwagger } from "./swagger/swagger";
 
 const app = express();
@@ -23,6 +24,7 @@ setupSwagger(app);
 })();
 
 app.use("/api/auth", otpRoutes);
+app.use("/api/profile", profileRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

@@ -1,5 +1,6 @@
 import express from 'express';
 import { sendOTPController,verifyOTPController } from '../controllers/otp.controller';
+import { otpIPLimiter, otpMobileLimiter } from '../middleware/rate_limiter.middleware';
 
  const router = express.Router();
  
@@ -45,7 +46,7 @@ router.get("/health", (req, res) => {
  *       500:
  *         description: Failed to send OTP
  */
-router.post("/request-otp", sendOTPController);
+router.post("/request-otp",otpIPLimiter,otpMobileLimiter, sendOTPController);
 
 
 
@@ -79,6 +80,6 @@ router.post("/request-otp", sendOTPController);
  *       500:
  *         description: Failed to verify OTP
  */
-router.post("/verify-otp",verifyOTPController);
+router.post("/verify-otp",otpIPLimiter,verifyOTPController);
 
 export const otpRoutes = router;

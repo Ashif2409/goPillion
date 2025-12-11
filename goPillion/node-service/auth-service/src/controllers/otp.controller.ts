@@ -8,38 +8,44 @@ import { generateRefreshToken, generateToken } from "../utils/generateToken";
 
 
 export const sendOTPController = async (req: Request, res: Response) => {
-    try {
-        const { mobile } = req.body;
+  try {
+    const { mobile } = req.body;
 
-        if (!mobile) {
-            return res.status(400).json({ message: "Mobile required" });
-        }
-
-        // 1. Generate OTP
-        const otp = generateOTP();
-        const hashedOtp = await bcrypt.hash(otp, 10);
-
-        // 2. Delete old OTP if exists
-        await UserOTP.destroy({ where: { mobile } });
-
-        // 3. Save new OTP
-        await UserOTP.create({
-            mobile,
-            otp: hashedOtp,
-            expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
-            verified: false,
-        });
-
-        // 4. Send OTP via Twilio
-        await sendOTP(mobile, otp);
-
-        return res.json({ message: "OTP sent successfully" });
-
-    } catch (err) {
-        console.error("OTP send error:", err);
-        return res.status(500).json({ message: "Failed to send OTP" });
+    if (!mobile) {
+      return res.status(400).json({ message: "Mobile required" });
     }
+
+    const otp = generateOTP();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+
+    await UserOTP.destroy({ where: { mobile } });
+
+    await UserOTP.create({
+      mobile,
+      otp: hashedOtp,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      verified: false,
+    });
+
+    // 👇👇 Only send SMS in production
+    if (process.env.NODE_ENV === "production") {
+      await sendOTP(mobile, otp);
+    } else {
+      console.log("⚠️ OTP (DEV MODE):", otp);
+    }
+
+    return res.json({ 
+      message: process.env.NODE_ENV === "production" 
+        ? "OTP sent successfully" 
+        : `OTP for testing: ${otp}` // optional, dev-only
+    });
+
+  } catch (err) {
+    console.error("OTP send error:", err);
+    return res.status(500).json({ message: "Failed to send OTP" });
+  }
 };
+
 
 export const verifyOTPController = async (req: Request, res: Response) => {
     let userCreated = false;

@@ -6,6 +6,7 @@ import sequelize from "./database_connection/db.connection";
 import { otpRoutes} from "./routes/otp.route";
 import { profileRoutes } from "./routes/profile.route";
 import { setupSwagger } from "./swagger/swagger";
+import { authLimiter } from "./middleware/rate_limiter.middleware";
 
 const app = express();
 app.use(express.json());
@@ -23,6 +24,7 @@ setupSwagger(app);
   }
 })();
 
+app.use(authLimiter);
 app.use("/api/auth", otpRoutes);
 app.use("/api/profile", profileRoutes);
 

@@ -1,4 +1,5 @@
 import express from "express";
+import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -10,6 +11,7 @@ import { authLimiter } from "./middleware/rate_limiter.middleware";
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 setupSwagger(app);
 
 (async () => {

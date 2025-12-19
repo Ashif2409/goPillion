@@ -19,6 +19,21 @@ const options = {
                     bearerFormat: "JWT"
                 }
             }
+            ,
+            schemas: {
+                User: {
+                    type: "object",
+                    properties: {
+                        id: { type: "string", format: "uuid", example: "3fa85f64-5717-4562-b3fc-2c963f66afa6" },
+                        mobile: { type: "string", example: "9876543210" },
+                        name: { type: "string", example: "Md Khalilul Rahman" },
+                        role: { type: "string", enum: ["USER", "DRIVER"], example: "DRIVER" },
+                        createdAt: { type: "string", format: "date-time" },
+                        updatedAt: { type: "string", format: "date-time" }
+                    },
+                    required: ["id", "mobile", "role"]
+                }
+            }
         },
         servers: [
             {

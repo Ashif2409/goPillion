@@ -1,6 +1,6 @@
 import express from 'express';
 import { authMiddleware } from '../middleware/auth.middleware';
-const { getProfileController,updateProfileController } = require('../controllers/profile.controller');
+const { getProfileController,updateProfileController,logoutController } = require('../controllers/profile.controller');
 const router = express.Router();
 
 
@@ -80,5 +80,7 @@ router.get("/",authMiddleware, getProfileController);
  */
 
 router.put("/",authMiddleware, updateProfileController);
+
+router.post("/logout",authMiddleware, logoutController);
 
 export const profileRoutes = router;

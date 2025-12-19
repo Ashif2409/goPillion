@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import User from "../models/User";
+import Tokens from "../models/BlockToken";
 
 
 export const getProfileController = async (req: Request, res: Response) => {
@@ -70,3 +71,26 @@ export const updateProfileController = async (req: Request, res: Response) => {
     }
 };
 
+export const logoutController = async (req: Request, res: Response):Promise<any> => {
+    try {
+        const refreshToken = req.cookies.refreshToken;
+        if (!refreshToken) {
+            return res.status(400).json({ success: false, message: "No refresh token provided" });
+        }
+        // Clear refresh token cookie
+        res.clearCookie("refreshToken", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+        });
+
+        await Tokens.create({
+              token: refreshToken 
+        });
+        
+        return res.json({ success: true, message: "Logged out successfully" });
+    } catch (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};

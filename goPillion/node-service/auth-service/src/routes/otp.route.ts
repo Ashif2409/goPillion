@@ -1,6 +1,7 @@
 import express from 'express';
-import { sendOTPController,verifyOTPController } from '../controllers/otp.controller';
+import { generateRefreshTokenController, sendOTPController,verifyOTPController } from '../controllers/otp.controller';
 import { otpIPLimiter, otpMobileLimiter } from '../middleware/rate_limiter.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
 
  const router = express.Router();
  
@@ -82,4 +83,6 @@ router.post("/request-otp",otpIPLimiter,otpMobileLimiter, sendOTPController);
  */
 router.post("/verify-otp",otpIPLimiter,verifyOTPController);
 
+
+router.post("/refresh-token",authMiddleware, generateRefreshTokenController);
 export const otpRoutes = router;

@@ -4,46 +4,48 @@ import { sendOTP } from '../services/otpServices';
 import UserOTP from "../models/UserOTP";
 import User from "../models/User";
 import bcrypt from 'bcrypt';
-import { generateRefreshToken, generateToken } from "../utils/generateToken";
+import { generateRefreshToken, generateAccessToken } from "../utils/generateToken";
+import  jwt  from "jsonwebtoken";
+import Tokens from "../models/BlockToken";
 
 
 export const sendOTPController = async (req: Request, res: Response) => {
-  try {
-    const { mobile } = req.body;
+    try {
+        const { mobile } = req.body;
 
-    if (!mobile) {
-      return res.status(400).json({ message: "Mobile required" });
+        if (!mobile) {
+            return res.status(400).json({ message: "Mobile required" });
+        }
+
+        const otp = generateOTP();
+        const hashedOtp = await bcrypt.hash(otp, 10);
+
+        await UserOTP.destroy({ where: { mobile } });
+
+        await UserOTP.create({
+            mobile,
+            otp: hashedOtp,
+            expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+            verified: false,
+        });
+
+        // 👇👇 Only send SMS in production
+        if (process.env.NODE_ENV === "production") {
+            await sendOTP(mobile, otp);
+        } else {
+            console.log("⚠️ OTP (DEV MODE):", otp);
+        }
+
+        return res.json({
+            message: process.env.NODE_ENV === "production"
+                ? "OTP sent successfully"
+                : `OTP for testing: ${otp}` // optional, dev-only
+        });
+
+    } catch (err) {
+        console.error("OTP send error:", err);
+        return res.status(500).json({ message: "Failed to send OTP" });
     }
-
-    const otp = generateOTP();
-    const hashedOtp = await bcrypt.hash(otp, 10);
-
-    await UserOTP.destroy({ where: { mobile } });
-
-    await UserOTP.create({
-      mobile,
-      otp: hashedOtp,
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-      verified: false,
-    });
-
-    // 👇👇 Only send SMS in production
-    if (process.env.NODE_ENV === "production") {
-      await sendOTP(mobile, otp);
-    } else {
-      console.log("⚠️ OTP (DEV MODE):", otp);
-    }
-
-    return res.json({ 
-      message: process.env.NODE_ENV === "production" 
-        ? "OTP sent successfully" 
-        : `OTP for testing: ${otp}` // optional, dev-only
-    });
-
-  } catch (err) {
-    console.error("OTP send error:", err);
-    return res.status(500).json({ message: "Failed to send OTP" });
-  }
 };
 
 
@@ -104,7 +106,7 @@ export const verifyOTPController = async (req: Request, res: Response) => {
             return res.status(500).json({ success: false, message: "User ID undefined" });
         }
         //  Create tokens
-        const accessToken = generateToken(userId);
+        const accessToken = generateAccessToken(userId, user.role);
         const refreshToken = generateRefreshToken(userId);
 
         //  Send refresh token as secure cookie
@@ -138,4 +140,28 @@ export const verifyOTPController = async (req: Request, res: Response) => {
     }
 };
 
+
+export const generateRefreshTokenController = async (req: Request, res: Response) => {
+    try {
+        // @ts-ignore
+        const token = req.cookies.refreshToken;
+        if (!token) return res.sendStatus(401);
+
+        const isBlocked = await Tokens.findOne({ where: { token } });
+        if (isBlocked) return res.sendStatus(403);
+
+        const decoded: any = jwt.verify(token, process.env.JWT_REFRESH_SECRET!);
+        const user = await User.findByPk(decoded.id);
+        if (!user) return res.sendStatus(404);
+        const accessToken = generateAccessToken(user.id, user.role);
+
+        return res.json({
+            success: true,
+            accessToken,
+        });
+    } catch (err) {
+        console.error("Refresh token error:", err);
+        return res.status(500).json({ success: false, message: "Failed to generate access token" });
+    }
+};
 

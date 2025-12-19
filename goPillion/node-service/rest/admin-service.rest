@@ -1,0 +1,63 @@
+@base_url = http://localhost:3000/api
+
+####################################
+# AUTH – REQUEST OTP
+####################################
+POST {{base_url}}/auth/request-otp
+Content-Type: application/json
+
+{
+  "mobile": "+918409253381"
+}
+
+###
+
+####################################
+# AUTH – VERIFY OTP
+# (stores access & refresh tokens)
+####################################
+POST {{base_url}}/auth/verify-otp
+Content-Type: application/json
+
+{
+  "mobile": "+918409253381",
+  "otp": "405151"
+}
+
+
+###
+@access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEzNDk0MTllLTVmOTctNDY3Yi1iZjMxLWVhYTUxMGJjZjY5MCIsImlhdCI6MTc2NjEzNzMwNSwiZXhwIjoxNzY2MTQwOTA1fQ.fLbDMUs8ZUdu6hmtuVn0VOUuqbNzBIVYvc37-SC8kxc
+# PROFILE – GET
+####################################
+GET {{base_url}}/profile
+Authorization: Bearer {{access_token}}
+
+###
+
+####################################
+# PROFILE – UPDATE
+####################################
+PUT {{base_url}}/profile
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "MD Khalilul"
+}
+
+###
+
+####################################
+# AUTH – REFRESH TOKEN
+# (refresh token comes from cookie)
+####################################
+POST {{base_url}}/auth/refresh-token
+Authorization: Bearer {{access_token}}
+
+
+###
+#######################################
+# PROFILE – LOGOUT
+#######################################
+POST {{base_url}}/profile/logout
+Authorization: Bearer {{access_token}}

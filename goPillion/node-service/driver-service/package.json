@@ -1,5 +1,5 @@
 {
-  "name": "@node-service/auth-service",
+  "name": "@node-service/driver-service",
   "version": "0.0.1",
   "private": true,
   "nx": {
@@ -12,15 +12,15 @@
         "defaultConfiguration": "production",
         "options": {
           "platform": "node",
-          "outputPath": "auth-service/dist",
+          "outputPath": "driver-service/dist",
           "format": [
             "cjs"
           ],
           "bundle": false,
-          "main": "auth-service/src/main.ts",
-          "tsConfig": "auth-service/tsconfig.app.json",
+          "main": "driver-service/src/main.ts",
+          "tsConfig": "driver-service/tsconfig.app.json",
           "assets": [
-            "auth-service/src/assets"
+            "driver-service/src/assets"
           ],
           "esbuildOptions": {
             "sourcemap": true,
@@ -48,8 +48,8 @@
         "cache": true,
         "executor": "@nx/js:prune-lockfile",
         "outputs": [
-          "{workspaceRoot}/auth-service/dist/package.json",
-          "{workspaceRoot}/auth-service/dist/package-lock.json"
+          "{workspaceRoot}/driver-service/dist/package.json",
+          "{workspaceRoot}/driver-service/dist/package-lock.json"
         ],
         "options": {
           "buildTarget": "build"
@@ -61,7 +61,7 @@
         ],
         "cache": true,
         "outputs": [
-          "{workspaceRoot}/auth-service/dist/workspace_modules"
+          "{workspaceRoot}/driver-service/dist/workspace_modules"
         ],
         "executor": "@nx/js:copy-workspace-modules",
         "options": {
@@ -83,42 +83,31 @@
           "build"
         ],
         "options": {
-          "buildTarget": "@node-service/auth-service:build",
+          "buildTarget": "@node-service/driver-service:build",
           "runBuildTargetDependencies": false
         },
         "configurations": {
           "development": {
-            "buildTarget": "@node-service/auth-service:build:development"
+            "buildTarget": "@node-service/driver-service:build:development"
           },
           "production": {
-            "buildTarget": "@node-service/auth-service:build:production"
+            "buildTarget": "@node-service/driver-service:build:production"
           }
-        }
-      },
-      "test": {
-        "options": {
-          "passWithNoTests": true
         }
       }
     }
   },
-  "scripts": {
-    "build": "nx build auth-service",
-    "serve": "nx serve auth-service",
-    "start": "node dist/main.js"
-  },
   "dependencies": {
-    "bcrypt": "^6.0.0",
-    "cookie-parser": "^1.4.7",
-    "dotenv": "^17.2.3",
     "express": "^4.21.2",
-    "express-rate-limit": "^8.2.1",
+    "mongoose": "^9.0.2",
+    "cloudinary": "^2.8.0",
+    "multer": "^2.0.2",
+    "bcrypt": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
-    "sequelize": "^6.37.7",
-    "pg": "^8.16.3",
-    "pg-hstore": "^2.3.4",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.3.1",
+    "axios": "^1.4.0",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1",
-    "twilio": "^5.11.1"
+    "swagger-ui-express": "^4.6.3"
   }
 }

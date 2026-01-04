@@ -5,8 +5,6 @@ import UserOTP from "../models/UserOTP";
 import User from "../models/User";
 import bcrypt from 'bcrypt';
 import { generateRefreshToken, generateAccessToken } from "../utils/generateToken";
-import  jwt  from "jsonwebtoken";
-import Tokens from "../models/BlockToken";
 
 
 export const sendOTPController = async (req: Request, res: Response) => {
@@ -97,7 +95,7 @@ export const verifyOTPController = async (req: Request, res: Response) => {
             userCreated = true;
         }
 
-        const userId = (user as any).id ?? user?.dataValues?.id;
+        const userId = user.dataValues.id;
 
         if (!userId) {
             return res.status(500).json({ success: false, message: "User ID undefined" });
@@ -105,8 +103,7 @@ export const verifyOTPController = async (req: Request, res: Response) => {
         if (userId === undefined) {
             return res.status(500).json({ success: false, message: "User ID undefined" });
         }
-        //  Create tokens
-        const accessToken = generateAccessToken(userId, user.role);
+        const accessToken = generateAccessToken(userId, user.dataValues.role);
         const refreshToken = generateRefreshToken(userId);
 
         //  Send refresh token as secure cookie
@@ -140,28 +137,4 @@ export const verifyOTPController = async (req: Request, res: Response) => {
     }
 };
 
-
-export const generateRefreshTokenController = async (req: Request, res: Response) => {
-    try {
-        // @ts-ignore
-        const token = req.cookies.refreshToken;
-        if (!token) return res.sendStatus(401);
-
-        const isBlocked = await Tokens.findOne({ where: { token } });
-        if (isBlocked) return res.sendStatus(403);
-
-        const decoded: any = jwt.verify(token, process.env.JWT_REFRESH_SECRET!);
-        const user = await User.findByPk(decoded.id);
-        if (!user) return res.sendStatus(404);
-        const accessToken = generateAccessToken(user.id, user.role);
-
-        return res.json({
-            success: true,
-            accessToken,
-        });
-    } catch (err) {
-        console.error("Refresh token error:", err);
-        return res.status(500).json({ success: false, message: "Failed to generate access token" });
-    }
-};
 

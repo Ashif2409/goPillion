@@ -1,6 +1,6 @@
 import express from 'express';
 import { authMiddleware } from '../middleware/auth.middleware';
-const { getProfileController,updateProfileController,logoutController } = require('../controllers/profile.controller');
+const { getProfileController, updateProfileController, logoutController, adminLoginController } = require('../controllers/profile.controller');
 const router = express.Router();
 
 
@@ -30,7 +30,7 @@ const router = express.Router();
  *       404:
  *         description: User not found
  */
-router.get("/",authMiddleware, getProfileController);
+router.get("/", authMiddleware, getProfileController);
 
 /**
  * @swagger
@@ -79,8 +79,10 @@ router.get("/",authMiddleware, getProfileController);
  *         description: Server error
  */
 
-router.put("/",authMiddleware, updateProfileController);
+router.put("/", authMiddleware, updateProfileController);
 
-router.post("/logout",authMiddleware, logoutController);
+
+router.post("/admin", adminLoginController);
+router.post("/logout", authMiddleware, logoutController);
 
 export const profileRoutes = router;

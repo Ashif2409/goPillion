@@ -1,7 +1,9 @@
 import jwt, { SignOptions } from "jsonwebtoken";
 import dotenv from "dotenv";
 
+
 dotenv.config();
+
 
 export const generateAccessToken = (id: string, role: string): string => {
   const secret = process.env.JWT_SECRET;
@@ -10,7 +12,7 @@ export const generateAccessToken = (id: string, role: string): string => {
   }
 
   const options: SignOptions = {
-    expiresIn: (process.env.JWT_EXPIRES_IN as any) || "1h",
+    expiresIn: (process.env.JWT_EXPIRES_IN as any) || "15m",
   };
 
   return jwt.sign({ id, role }, secret, options);

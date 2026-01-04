@@ -19,19 +19,14 @@ COPY tsconfig*.json ./
 COPY src/ ./src/
 
 # Build using esbuild directly
+# Build using esbuild with packages=external
 RUN npx esbuild src/main.ts \
     --bundle \
     --platform=node \
     --target=es2020 \
     --outdir=dist \
     --format=cjs \
-    --external:express \
-    --external:mongoose \
-    --external:dotenv \
-    --external:bcrypt \
-    --external:jsonwebtoken \
-    --external:cookie-parser \
-    --external:cors
+    --packages=external
 
 # ---------------------------
 # STAGE 2: Run the service

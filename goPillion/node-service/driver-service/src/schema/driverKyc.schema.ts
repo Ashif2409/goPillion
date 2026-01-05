@@ -27,23 +27,18 @@ const DocumentSchema = new Schema(
 
 const DriverKycSchema = new Schema(
   {
-    driverId: {
-      type: String,
-      required: true,
-      unique: true,
-      index: true,
-    },
+    driverId: { type: String, required: true, unique: true, index: true },
 
     identityProof: { type: DocumentSchema },
     drivingLicense: { type: DocumentSchema },
     vehicleRC: { type: DocumentSchema },
     vehicleInsurance: { type: DocumentSchema },
     driverPhoto: { type: DocumentSchema },
+    pollutionCertificate: { type: DocumentSchema },
 
-    // ✅ NEW
-    pollutionCertificate: {
-      type: DocumentSchema,
-    },
+    // ✅ Vehicle info for passengers
+    vehicleName: { type: String },        // e.g., "Royal Enfield Classic 350"
+    vehicleNumber: { type: String },      // e.g., "MH12AB1234"
 
     kycStatus: {
       type: String,
@@ -53,6 +48,7 @@ const DriverKycSchema = new Schema(
   },
   { timestamps: true }
 );
+
 
 
 export const DriverKyc = model("DriverKyc", DriverKycSchema);

@@ -15,7 +15,10 @@ import {
   getDriverPhotoController,
   pollutionCertificateUploadController,
   getPollutionCertificateController,
-} from "../controllers/driver.controller";
+  updateVehicleInfoController,
+  getVehicleInfoController,
+  getDriverBasicProfileController,
+} from "../controllers/driverKYC.controller";
 
 const router = express.Router();
 
@@ -69,6 +72,11 @@ router.put(
   pollutionCertificateUploadController
 );
 
+router.put(
+  "/vehicle-info",
+  authMiddleware,
+  updateVehicleInfoController
+)
 
 /**
  * 📄 KYC Fetch APIs
@@ -115,4 +123,14 @@ router.get(
   getPollutionCertificateController
 );
 
+router.get(
+  "/vehicle-info",
+  authMiddleware,
+  getVehicleInfoController
+)
+
+router.get(
+  "/basic-profile",
+  getDriverBasicProfileController
+)
 export const driverRoutes = router;

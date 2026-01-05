@@ -10,10 +10,10 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-import { driverRoutes } from './routes/driver.route';
 import { connectDB } from './database/dbconnection';
+import { driverRoutes } from './routes/driver.route';
 import { adminRoutes } from './routes/admin.route';
-
+import { ratingRoutes } from './routes/rating.route';
 const host = process.env.HOST ?? '0.0.0.0';
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
@@ -28,6 +28,7 @@ app.get('/', (req, res) => {
 
 app.use('/api/driver/kyc', driverRoutes);
 app.use('/api/admin/kyc', adminRoutes);
+app.use('/api/reviews', ratingRoutes);
 // Start server only after DB connection
 const startServer = async () => {
   try {

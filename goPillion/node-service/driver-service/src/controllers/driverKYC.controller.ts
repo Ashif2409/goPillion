@@ -174,3 +174,122 @@ export const kycStatusController = async (req: Request, res: Response) => {
       .json({ success: false, message: "Status fetch failed" });
   }
 };
+
+
+
+
+export const updateVehicleInfoController = async (req: Request, res: Response) => {
+  try {
+    const driverId = req.user?.userId;
+    if (!driverId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { vehicleName, vehicleNumber } = req.body;
+
+    if (!vehicleName || !vehicleNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Both vehicleName and vehicleNumber are required",
+      });
+    }
+
+    const updatedDriver = await DriverKyc.findOneAndUpdate(
+      { driverId },
+      {
+        $set: {
+          vehicleName,
+          vehicleNumber,
+        },
+      },
+      { new: true, upsert: true } // upsert: create if doesn't exist
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Vehicle info updated successfully",
+      data: {
+        vehicleName: updatedDriver.vehicleName,
+        vehicleNumber: updatedDriver.vehicleNumber,
+      },
+    });
+  } catch (error) {
+    console.error("Update Vehicle Info Error:", error);
+    return res.status(500).json({ success: false, message: "Update failed" });
+  }
+};
+
+/**
+ * 📥 Get Vehicle Info Controller
+ */
+export const getVehicleInfoController = async (req: Request, res: Response) => {
+  try {
+    const driverId = req.user?.userId;
+    if (!driverId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const driver = await DriverKyc.findOne(
+      { driverId },
+      { vehicleName: 1, vehicleNumber: 1, _id: 0 }
+    );
+
+    if (!driver) {
+      return res.status(404).json({
+        success: false,
+        message: "Vehicle info not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        vehicleName: driver.vehicleName,
+        vehicleNumber: driver.vehicleNumber,
+      },
+    });
+  } catch (error) {
+    console.error("Get Vehicle Info Error:", error);
+    return res.status(500).json({ success: false, message: "Fetch failed" });
+  }
+};
+
+export const getDriverBasicProfileController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const driverId = req.params.id;
+    if (!driverId) {
+      return res.status(400).json({ message: "Driver ID is required" });
+    }
+
+    const driver = await DriverKyc.findOne(
+      { driverId },
+      {
+        vehicleNumber: 1,
+        vehicleName: 1,
+        driverPhoto: 1,
+        kycStatus: 1,
+        _id: 0,
+      }
+    );
+
+    if (!driver) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        vehicleNumber: driver.vehicleNumber || null,
+        vehicleName: driver.vehicleName || null,
+        driverPhoto: driver.driverPhoto?.url || null,
+        kycStatus: driver.kycStatus,
+      },
+    });
+  } catch (error) {
+    console.error("Get Driver Basic Profile Error:", error);
+    return res.status(500).json({ message: "Failed to fetch driver profile" });
+  }
+};

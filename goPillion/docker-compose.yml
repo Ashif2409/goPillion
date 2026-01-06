@@ -1,38 +1,162 @@
 version: "3.9"
 
 services:
+  # --------------------
+  # DATABASES
+  # --------------------
+
+  auth-postgres:
+    image: postgres:15
+    container_name: auth-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - auth_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USERNAME}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  driver-mongodb:
+    image: mongo:7
+    container_name: driver-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    command: >
+      mongod --logpath /var/log/mongodb/mongod.log --logappend --setParameter logComponentVerbosity='{ "verbosity": 0 }'
+    volumes:
+      - driver_mongodata:/data/db
+    healthcheck:
+      test: [ "CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand('ping')\" > /dev/null 2>&1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  # --------------------
+  # SERVICES
+  # --------------------
+
   auth-service:
     build:
-      context: .
-      dockerfile: ./node-service/auth-service/Dockerfile
+      context: ./node-service/auth-service
+      dockerfile: Dockerfile
     container_name: auth-service
+    restart: always
     ports:
       - "3001:3000"
-
-  user-service:
-    build:
-      context: .
-      dockerfile: ./node-service/user-service/Dockerfile
-    container_name: user-service
-    ports:
-      - "3002:3000"
-
-  notification-service:
-    build:
-      context: .
-      dockerfile: ./node-service/notification-service/Dockerfile
-    container_name: notification-service
-    ports:
-      - "3003:3000"
-
-  api-gateway:
-    build:
-      context: .
-      dockerfile: ./node-service/api-gateway/Dockerfile
-    container_name: api-gateway
-    ports:
-      - "3000:3000"
     depends_on:
-      - auth-service
-      - user-service
-      - notification-service
+      auth-postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      # Database
+      DB_HOST: ${DB_HOST}
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      # Twilio
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER}
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      ACCESS_TOKEN_EXPIRES_IN: ${ACCESS_TOKEN_EXPIRES_IN}
+      REFRESH_TOKEN_EXPIRES_IN: ${REFRESH_TOKEN_EXPIRES_IN}
+      # Admin
+      USERNAME_ADMIN: ${USERNAME_ADMIN}
+      PASSWORD_ADMIN: ${PASSWORD_ADMIN}
+
+  driver-service:
+    build:
+      context: ./node-service/driver-service
+      dockerfile: Dockerfile
+    container_name: driver-service
+    restart: always
+    ports:
+      - "3004:3000"
+    depends_on:
+      driver-mongodb:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      # MongoDB - Use cloud MongoDB from .env
+      MONGODB_URI: ${DRIVER_MONGO_URI}
+      HOST: 0.0.0.0
+      # Cloudinary
+      CLOUDINARY_CLOUD: ${CLOUDINARY_CLOUD}
+      CLOUDINARY_KEY: ${CLOUDINARY_KEY}
+      CLOUDINARY_SECRET: ${CLOUDINARY_SECRET}
+      # Auth Service URL (use Docker service name)
+      AUTH_SERVICE_URL: http://auth-service:3000/api
+  # user-service:
+  #   build:
+  #     context: ./node-service/user-service
+  #     dockerfile: Dockerfile
+  #   container_name: user-service
+  #   restart: always
+  #   ports:
+  #     - "3002:3000"
+  #   depends_on:
+  #     - auth-service
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     NODE_ENV: development
+  #     PORT: 3000
+
+  # notification-service:
+  #   build:
+  #     context: ./node-service/notification-service
+  #     dockerfile: Dockerfile
+  #   container_name: notification-service
+  #   restart: always
+  #   ports:
+  #     - "3003:3000"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     NODE_ENV: development
+  #     PORT: 3000
+
+  # api-gateway:
+  #   build:
+  #     context: ./node-service/api-gateway
+  #     dockerfile: Dockerfile
+  #   container_name: api-gateway
+  #   restart: always
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - auth-service
+  #     - user-service
+  #     - driver-service
+  #     - notification-service
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     NODE_ENV: development
+  #     PORT: 3000
+
+  # --------------------
+  # VOLUMES
+  # --------------------
+volumes:
+  auth_pgdata:
+  driver_mongodata:

@@ -1,0 +1,90 @@
+### ================================
+### Driver KYC Service - REST File
+### ================================
+
+@baseUrl = http://localhost:3000
+@token = YOUR_JWT_ACCESS_TOKEN
+
+
+### ================================
+### 🩺 Health Check
+### ================================
+GET {{baseUrl}}/
+
+
+### ================================
+### 🔐 KYC Upload APIs
+### ================================
+
+### 📄 Upload Identity Proof
+PUT {{baseUrl}}/api/driver/kyc/identity-proof
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data
+
+file=@./files/identity-proof.pdf
+
+
+### 🚘 Upload Driving License
+PUT {{baseUrl}}/api/driver/kyc/driving-license
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data
+
+file=@./files/driving-license.pdf
+
+
+### 📘 Upload Vehicle RC
+PUT {{baseUrl}}/api/driver/kyc/vehicle-rc
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data
+
+file=@./files/vehicle-rc.pdf
+
+
+### 🛡 Upload Vehicle Insurance
+PUT {{baseUrl}}/api/driver/kyc/vehicle-insurance
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data
+
+file=@./files/vehicle-insurance.pdf
+
+
+### 👤 Upload Driver Photo
+PUT {{baseUrl}}/api/driver/kyc/driver-photo
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data
+
+file=@./files/driver-photo.jpg
+
+
+### ================================
+### 📄 KYC Fetch APIs
+### ================================
+
+### 📊 Get KYC Status
+GET {{baseUrl}}/api/driver/kyc/status
+Authorization: Bearer {{token}}
+
+
+### 📄 Get Identity Proof
+GET {{baseUrl}}/api/driver/kyc/identity-proof
+Authorization: Bearer {{token}}
+
+
+### 🚘 Get Driving License
+GET {{baseUrl}}/api/driver/kyc/driving-license
+Authorization: Bearer {{token}}
+
+
+### 📘 Get Vehicle RC
+GET {{baseUrl}}/api/driver/kyc/vehicle-rc
+Authorization: Bearer {{token}}
+
+
+### 🛡 Get Vehicle Insurance
+GET {{baseUrl}}/api/driver/kyc/vehicle-insurance
+Authorization: Bearer {{token}}
+
+
+### 👤 Get Driver Photo
+GET {{baseUrl}}/api/driver/kyc/driver-photo
+Authorization: Bearer {{token}}

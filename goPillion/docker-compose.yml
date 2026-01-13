@@ -10,15 +10,33 @@ services:
     container_name: auth-postgres
     restart: always
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${AUTH_DB_NAME}
+      POSTGRES_USER: ${AUTH_DB_USERNAME}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - auth_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${DB_USERNAME}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${AUTH_DB_USERNAME}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  trip-postgres:
+    image: postgres:15
+    container_name: trip-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${TRIP_DB_NAME}
+      POSTGRES_USER: ${TRIP_DB_USERNAME}
+      POSTGRES_PASSWORD: ${TRIP_DB_PASSWORD}
+    ports:
+      - "5433:5432" # host:container (avoid clash with auth postgres)
+    volumes:
+      - trip_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${TRIP_DB_USERNAME}" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -60,11 +78,11 @@ services:
       NODE_ENV: development
       PORT: 3000
       # Database
-      DB_HOST: ${DB_HOST}
-      DB_PORT: 5432
-      DB_NAME: ${DB_NAME}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: ${AUTH_DB_HOST}
+      DB_PORT: ${AUTH_DB_PORT}
+      DB_NAME: ${AUTH_DB_NAME}
+      DB_USERNAME: ${AUTH_DB_USERNAME}
+      DB_PASSWORD: ${AUTH_DB_PASSWORD}
       # Twilio
       TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
       TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
@@ -105,6 +123,37 @@ services:
       CLOUDINARY_SECRET: ${CLOUDINARY_SECRET}
       # Auth Service URL (use Docker service name)
       AUTH_SERVICE_URL: http://auth-service:3000/api
+
+  trip-service:
+    build:
+      context: ./node-service/trip-service
+      dockerfile: Dockerfile
+    container_name: trip-service
+    restart: always
+    ports:
+      - "3005:3000"
+    depends_on:
+      trip-postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      HOST: 0.0.0.0
+
+      # Trip DB
+      TRIP_DB_HOST: ${TRIP_DB_HOST}
+      TRIP_DB_PORT: ${TRIP_DB_PORT}
+      TRIP_DB_NAME: ${TRIP_DB_NAME}
+      TRIP_DB_USERNAME: ${TRIP_DB_USERNAME}
+      TRIP_DB_PASSWORD: ${TRIP_DB_PASSWORD}
+
+      # Auth service (for token validation)
+      AUTH_SERVICE_URL: http://auth-service:3000/api
+      DRIVER_SERVICE_URL: http://driver-service:3000/api
   # user-service:
   #   build:
   #     context: ./node-service/user-service
@@ -160,3 +209,4 @@ services:
 volumes:
   auth_pgdata:
   driver_mongodata:
+  trip_pgdata:

@@ -17,6 +17,9 @@
     },
     {
       "path": "./driver-service"
+    },
+    {
+      "path": "./trip-service"
     }
   ]
 }

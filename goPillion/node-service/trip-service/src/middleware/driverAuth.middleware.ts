@@ -16,7 +16,7 @@ declare global {
 }
 
 
-export const authMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+export const driverAuthMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
         const authHeader = req.headers['authorization'];
         if (!authHeader) {
@@ -37,6 +37,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
             }
         );
 
+        // console.log("response from auth service driver-service/auth.middleware.ts- ", response.data)
 
         if (response.status === 200) {
             // FIXED: Correct destructuring - role is inside user object

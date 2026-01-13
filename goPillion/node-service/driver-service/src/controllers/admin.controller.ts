@@ -144,12 +144,12 @@ export const updateKycDocumentStatus = async (
         if (docs.some((d) => d.status === "REJECTED")) {
             driverKyc.kycStatus = "REJECTED";
         } else if (docs.every((d) => d.status === "VERIFIED")) {
-            // Warning: This implies all 6 docs MUST be present and verified.
+            // Warning: This implies all 7 docs MUST be present and verified.
             // If some docs are optional, this logic might be too strict.
             // Assuming all VALID_DOCS are required for full KYC verification.
             // We generally check if we have ALL docs.
             const allPresent = VALID_DOCS.every(docName => (driverKyc as any)[docName]?.url);
-            if (allPresent) {
+            if (allPresent && driverKyc.vehicleNumber && driverKyc.vehicleName) {
                 driverKyc.kycStatus = "VERIFIED";
             } else {
                 driverKyc.kycStatus = "PENDING";
@@ -158,6 +158,7 @@ export const updateKycDocumentStatus = async (
             driverKyc.kycStatus = "PENDING";
         }
 
+        //please here add that if the vehicleumber and vehiclename are present then only verified else pending
         await driverKyc.save();
 
         return res.status(200).json({

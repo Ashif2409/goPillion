@@ -176,6 +176,28 @@ export const kycStatusController = async (req: Request, res: Response) => {
 };
 
 
+export const getDriverKycStatusController = async (req: Request, res: Response) => {
+  try {
+    const driverId = req.params.id;
+    if (!driverId) {
+      return res.status(400).json({ message: "Driver ID is required" });
+    }
+
+    const kyc = await DriverKyc.findOne(
+      { driverId },
+      { kycStatus: 1, _id: 0 }
+    );
+
+    return res.status(200).json({
+      success: true,
+      kycStatus: kyc?.kycStatus || "INCOMPLETE",
+    });
+  } catch {
+    return res
+      .status(500)
+      .json({ success: false, message: "Status fetch failed" });
+  }
+};
 
 
 export const updateVehicleInfoController = async (req: Request, res: Response) => {
@@ -185,7 +207,7 @@ export const updateVehicleInfoController = async (req: Request, res: Response) =
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const { vehicleName, vehicleNumber } = req.body;
+    let { vehicleName, vehicleNumber } = req.body;
 
     if (!vehicleName || !vehicleNumber) {
       return res.status(400).json({
@@ -194,15 +216,25 @@ export const updateVehicleInfoController = async (req: Request, res: Response) =
       });
     }
 
+    // ✅ sanitize
+    vehicleName = vehicleName.trim();
+    vehicleNumber = vehicleNumber.trim().toUpperCase();
+
+    // ✅ validate vehicle number
+    const vehicleRegex = /^[A-Z]{2}\d{2}[A-Z]{1,2}\s?\d{4}$/;
+    if (!vehicleRegex.test(vehicleNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid vehicle number format (e.g. JH05D 5515)",
+      });
+    }
+
     const updatedDriver = await DriverKyc.findOneAndUpdate(
       { driverId },
       {
-        $set: {
-          vehicleName,
-          vehicleNumber,
-        },
+        $set: { vehicleName, vehicleNumber },
       },
-      { new: true, upsert: true } // upsert: create if doesn't exist
+      { new: true, upsert: true }
     );
 
     return res.status(200).json({
@@ -218,6 +250,7 @@ export const updateVehicleInfoController = async (req: Request, res: Response) =
     return res.status(500).json({ success: false, message: "Update failed" });
   }
 };
+
 
 /**
  * 📥 Get Vehicle Info Controller

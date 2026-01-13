@@ -16,7 +16,7 @@ declare global {
 }
 
 
-export const authMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+export const passengerAuthMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
         const authHeader = req.headers['authorization'];
         if (!authHeader) {
@@ -26,7 +26,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         if (!token) {
             return res.status(401).json({ message: 'Token missing' });
         }
-        // console.log("auth service url driver-service/auth.middleware.ts- ", process.env.AUTH_SERVICE_URL)
+        console.log("auth service url driver-service/auth.middleware.ts- ", process.env.AUTH_SERVICE_URL)
 
         // Validate token with Auth Service
         const response = await axios.post(
@@ -43,7 +43,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
             const { user } = response.data;
             const { userId, role } = user;
 
-            if (role !== 'DRIVER') {
+            if (role !== 'USER') {
                 return res.status(403).json({ message: 'Forbidden: Insufficient role' });
             }
 

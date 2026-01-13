@@ -8,6 +8,7 @@ import {
   vehicleInsuranceUploadController,
   driverPhotoUploadController,
   kycStatusController,
+  getDriverKycStatusController,
   getIdentityProofController,
   getDrivingLicenseController,
   getVehicleRcController,
@@ -88,6 +89,11 @@ router.get(
 );
 
 router.get(
+  "/status-driver/:id",
+  getDriverKycStatusController
+)
+
+router.get(
   "/identity-proof",
   authMiddleware,
   getIdentityProofController
@@ -130,7 +136,7 @@ router.get(
 )
 
 router.get(
-  "/basic-profile",
+  "/basic-profile/:id",
   getDriverBasicProfileController
 )
 export const driverRoutes = router;

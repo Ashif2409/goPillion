@@ -4,6 +4,15 @@ services:
   # --------------------
   # DATABASES
   # --------------------
+  redis:
+    image: redis:7.2-alpine  # lightweight Redis image
+    container_name: redis-server
+    ports:
+      - "6379:6379"           # maps host:container
+    volumes:
+      - redis-data:/data      # persist data
+    command: ["redis-server", "--appendonly", "yes"]  # enable persistence
+    restart: unless-stopped
 
   auth-postgres:
     image: postgres:15
@@ -210,3 +219,4 @@ volumes:
   auth_pgdata:
   driver_mongodata:
   trip_pgdata:
+  redis-data:

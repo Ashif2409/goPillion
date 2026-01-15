@@ -98,15 +98,16 @@
     }
   },
   "dependencies": {
-    "express": "^4.21.2",
-    "mongoose": "^9.0.2",
-    "cloudinary": "^2.8.0",
-    "multer": "^2.0.2",
+    "axios": "^1.4.0",
     "bcrypt": "^6.0.0",
-    "jsonwebtoken": "^9.0.3",
+    "cloudinary": "^2.8.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.3.1",
-    "axios": "^1.4.0",
+    "express": "^4.21.2",
+    "ioredis": "^5.9.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.0.2",
+    "multer": "^2.0.2",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^4.6.3"
   }

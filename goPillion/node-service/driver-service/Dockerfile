@@ -1,7 +1,7 @@
 # ---------------------------
 # STAGE 1: Build the service
 # ---------------------------
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -31,7 +31,7 @@ RUN npx esbuild src/main.ts \
 # ---------------------------
 # STAGE 2: Run the service
 # ---------------------------
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 
 WORKDIR /app
 

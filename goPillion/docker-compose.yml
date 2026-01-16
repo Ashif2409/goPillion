@@ -5,13 +5,13 @@ services:
   # DATABASES
   # --------------------
   redis:
-    image: redis:7.2-alpine  # lightweight Redis image
+    image: redis:7.2-alpine # lightweight Redis image
     container_name: redis-server
     ports:
-      - "6379:6379"           # maps host:container
+      - "6379:6379" # maps host:container
     volumes:
-      - redis-data:/data      # persist data
-    command: ["redis-server", "--appendonly", "yes"]  # enable persistence
+      - redis-data:/data # persist data
+    command: [ "redis-server", "--appendonly", "yes" ] # enable persistence
     restart: unless-stopped
 
   auth-postgres:
@@ -163,6 +163,22 @@ services:
       # Auth service (for token validation)
       AUTH_SERVICE_URL: http://auth-service:3000/api
       DRIVER_SERVICE_URL: http://driver-service:3000/api
+
+  map-service:
+    build:
+      context: ./node-service/map-service
+      dockerfile: Dockerfile
+    container_name: map-service
+    restart: always
+    ports:
+      - "3006:3000"
+    env_file:
+      - .env
+    environment:
+      OSRM_BASE_URL: ${OSRM_BASE_URL}
+      NOMINATIM_BASE_URL: ${NOMINATIM_BASE_URL}
+      PORT: ${MAP_PORT}
+      MAP_HOST: ${MAP_HOST}
   # user-service:
   #   build:
   #     context: ./node-service/user-service

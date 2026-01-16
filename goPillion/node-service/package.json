@@ -48,7 +48,8 @@
     "notification-service",
     "api-gateway",
     "driver-service",
-    "trip-service"
+    "trip-service",
+    "map-service"
   ],
   "dependencies": {
     "bcrypt": "^6.0.0",

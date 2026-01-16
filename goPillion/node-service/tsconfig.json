@@ -20,6 +20,9 @@
     },
     {
       "path": "./trip-service"
+    },
+    {
+      "path": "./map-service"
     }
   ]
 }

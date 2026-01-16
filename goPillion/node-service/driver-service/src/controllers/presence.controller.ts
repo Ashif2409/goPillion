@@ -7,6 +7,7 @@ import { goOffline, goOnline, isDriverOnline, heartbeat as serviceHeartbeat } fr
 export const toggleOnline = async (req: Request, res: Response): Promise<any> => {
     try {
         const driverId = req.user?.userId;
+        const { lng, lat } = req.body;
         if (!driverId) return res.status(401).json({ message: "Unauthorized" });
 
         const online = await isDriverOnline(driverId);
@@ -15,7 +16,7 @@ export const toggleOnline = async (req: Request, res: Response): Promise<any> =>
             return res.status(200).json({ status: "OFFLINE" });
         }
 
-        await goOnline(driverId);
+        await goOnline(driverId, lng, lat);
         return res.status(200).json({ status: "ONLINE" });
     } catch (err) {
         console.error("Error toggling driver presence:", err);
@@ -29,9 +30,10 @@ export const toggleOnline = async (req: Request, res: Response): Promise<any> =>
 export const heartbeat = async (req: Request, res: Response): Promise<any> => {
     try {
         const driverId = req.user?.userId;
+        const { lng, lat } = req.body;
         if (!driverId) return res.status(401).json({ message: "Unauthorized" });
 
-        const alive = await serviceHeartbeat(driverId);
+        const alive = await serviceHeartbeat(driverId, lng, lat);
         if (!alive) {
             return res.status(404).json({ message: "Driver is offline" });
         }

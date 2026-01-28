@@ -1,5 +1,5 @@
 import { redis } from "../database/redisConnection";
-import { sendDriverLocationToMapService, updateDriverLocationInMapService, removeDriverFromMapService } from "../client/map.clint";
+import { sendDriverLocationToMapService, updateDriverLocationInMapService, removeDriverFromMapService } from "../client/map.client";
 const TTL=60;
 
 export const goOnline = async (driverId: string, lng: number, lat: number) => {

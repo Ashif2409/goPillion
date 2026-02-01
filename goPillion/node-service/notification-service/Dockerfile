@@ -1,40 +1,51 @@
 # ---------------------------
 # STAGE 1: Build the service
 # ---------------------------
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
-WORKDIR /workspace
+WORKDIR /app
 
-# Copy monorepo-level files
-COPY node-service/package.json node-service/package-lock.json node-service/nx.json node-service/tsconfig.base.json ./
+# Copy package files
+COPY package*.json ./
 
-# Copy shared packages
-COPY node-service/packages ./packages
-
-# Copy this service's source
-COPY node-service/notification-service ./notification-service
-
-# Install dependencies
+# Install ALL dependencies
 RUN npm install
 
-# Build only notification-service
-RUN npx nx build notification-service --configuration=production
+# Also install esbuild if not in package.json
+RUN npm install --save-dev esbuild typescript @types/node
+
+# Copy source code and configs
+COPY tsconfig*.json ./
+COPY src/ ./src/
+
+# Build using esbuild directly
+# Build using esbuild with packages=external
+RUN npx esbuild src/main.ts \
+    --bundle \
+    --platform=node \
+    --target=es2020 \
+    --outdir=dist \
+    --format=cjs \
+    --packages=external
 
 # ---------------------------
 # STAGE 2: Run the service
 # ---------------------------
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Copy output from builder
-COPY --from=builder /workspace/notification-service/dist/notification-service/src ./dist
-
 # Copy package.json
-COPY node-service/notification-service/package.json ./
+COPY package*.json ./
 
-# Install runtime dependencies
+# Install only production dependencies
 RUN npm install --only=production
+
+# Copy compiled JavaScript from builder
+COPY --from=builder /app/dist ./dist
+
+ENV NODE_ENV=development
+ENV PORT=3000
 
 EXPOSE 3000
 

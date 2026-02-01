@@ -179,36 +179,33 @@ services:
       NOMINATIM_BASE_URL: ${NOMINATIM_BASE_URL}
       PORT: ${MAP_PORT}
       MAP_HOST: ${MAP_HOST}
-  # user-service:
-  #   build:
-  #     context: ./node-service/user-service
-  #     dockerfile: Dockerfile
-  #   container_name: user-service
-  #   restart: always
-  #   ports:
-  #     - "3002:3000"
-  #   depends_on:
-  #     - auth-service
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     NODE_ENV: development
-  #     PORT: 3000
 
-  # notification-service:
-  #   build:
-  #     context: ./node-service/notification-service
-  #     dockerfile: Dockerfile
-  #   container_name: notification-service
-  #   restart: always
-  #   ports:
-  #     - "3003:3000"
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     NODE_ENV: development
-  #     PORT: 3000
+  notification-service:
+    build:
+      context: ./node-service/notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    restart: always
+    ports:
+      - "3003:3000"
+    depends_on:
+      auth-service:
+        condition: service_started
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      PORT: ${NOTIFICATION_PORT}
+      HOST: ${NOTIFICATION_HOST}
+      AUTH_SERVICE_URL: http://auth-service:3000/api
+      # MongoDB
+      NOTIFICATION_MONGO_URI: ${NOTIFICATION_MONGO_URI}
 
+      # Redis (for pub/sub or presence)
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
   # api-gateway:
   #   build:
   #     context: ./node-service/api-gateway

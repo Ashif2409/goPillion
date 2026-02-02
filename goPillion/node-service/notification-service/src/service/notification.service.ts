@@ -1,13 +1,7 @@
 import { NotificationModel } from "../schema/notification.schema";
-import { isUserOnline, getUserSocketId } from "../websocket/socket.store";
+import { isUserOnline, getUserSocket } from "../websocket/socket.store";
 import { EventTypes } from "../types/event.types";
-
-
-let io: any; // injected socket instance
-
-export const setSocketInstance = (socketIO: any) => {
-  io = socketIO;
-};
+import WebSocket from "ws";
 
 export const notifyUser = async (
   userId: string,
@@ -24,15 +18,17 @@ export const notifyUser = async (
     isRead: false,
   });
 
-  // 2️⃣ WebSocket if online
+  // 2️⃣ Send via WebSocket if online
   if (isUserOnline(userId)) {
-    const socketId = getUserSocketId(userId);
-    if (socketId) {
-      io.to(socketId).emit(type, notification);
+    const ws = getUserSocket(userId);
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        event: type,
+        data: notification,
+      }));
     }
   }
-
-  // 3️⃣ FCM later (ignored for now)
 
   return notification;
 };

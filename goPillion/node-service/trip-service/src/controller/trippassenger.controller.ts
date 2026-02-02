@@ -3,6 +3,12 @@ import { Trip } from "../model/trip.model";
 import { Op } from "sequelize";
 import { generateOtp } from "../utils/generateOtp";
 import brcypt from "bcrypt";
+import {
+    notifyRideRequested,
+    notifyRideAccepted,
+    notifyOtpGenerated,
+    notifyRideCancelled
+} from "../service/trip.notification.service";
 /**
  * Passenger posts a trip (PASSENGER_POSTED)
  */
@@ -187,6 +193,7 @@ export const requestDriverController = async (
 ) => {
     try {
         const passengerId = req.user?.userId;
+        if (!passengerId) return res.status(401).json({ message: "Unauthorized" });
         const { id } = req.params;
 
         const trip = await Trip.findByPk(id);
@@ -212,6 +219,16 @@ export const requestDriverController = async (
          * TODO:
          * - Notify driver via NOTIFICATION SERVICE
          */
+        // Notify driver
+        if (trip.dataValues.driverId) {
+            await notifyRideRequested(trip.dataValues.driverId, {
+                tripId: trip.dataValues.id,
+                senderId: passengerId,
+                srcName: trip.dataValues.srcName,
+                destName: trip.dataValues.destName,
+                price: trip.dataValues.price
+            });
+        }
 
         return res.status(200).json({
             message: "Driver requested successfully",
@@ -232,6 +249,7 @@ export const confirmDriverController = async (
 ) => {
     try {
         const passengerId = req.user?.userId;
+        if (!passengerId) return res.status(401).json({ message: "Unauthorized" });
         const { id } = req.params;
 
         const trip = await Trip.findByPk(id);
@@ -259,6 +277,21 @@ export const confirmDriverController = async (
         // 🔔 SEND OTP TO PASSENGER (SELF)
         // notificationService.sendOtp(passengerId, otp);
         console.log("Generated OTP for trip confirmation:", otp);
+
+        // Notify driver
+        if (trip.dataValues.driverId) {
+            await notifyRideAccepted(trip.dataValues.driverId, {
+                tripId: trip.dataValues.id,
+                passengerId: passengerId,
+                status: "CONFIRMED"
+            });
+        }
+
+        // Send OTP to self (Passenger)
+        await notifyOtpGenerated(passengerId, {
+            tripId: trip.dataValues.id,
+            otp: otp
+        });
         return res.status(200).json({
             message: "Driver confirmed successfully",
             trip,
@@ -302,6 +335,7 @@ export const cancelTripPassengerController = async (
 ) => {
     try {
         const passengerId = req.user?.userId;
+        if (!passengerId) return res.status(401).json({ message: "Unauthorized" });
         const trip = await Trip.findByPk(req.params.id);
 
         if (!trip) {
@@ -323,6 +357,12 @@ export const cancelTripPassengerController = async (
          * - Notify driver (if assigned)
          * - Remove from SEARCH SERVICE
          */
+        if (trip.dataValues.driverId) {
+            await notifyRideCancelled(trip.dataValues.driverId, {
+                tripId: trip.dataValues.id,
+                reason: "Passenger cancelled the trip"
+            });
+        }
 
         return res.status(200).json({
             message: "Trip cancelled successfully",
@@ -343,6 +383,7 @@ export const deleteTripPassengerController = async (
 ) => {
     try {
         const passengerId = req.user?.userId;
+        if (!passengerId) return res.status(401).json({ message: "Unauthorized" });
         const trip = await Trip.findByPk(req.params.id);
 
         if (!trip) {

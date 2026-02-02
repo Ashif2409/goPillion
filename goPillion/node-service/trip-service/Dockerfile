@@ -33,7 +33,9 @@ RUN npx esbuild src/main.ts \
     --external:pg \
     --external:pg-hstore \
     --external:axios \
-    --external:bcrypt
+    --external:bcrypt \
+    --external:kafkajs \
+    --external:redis
 # ---------------------------
 # STAGE 2: Run the service
 # ---------------------------

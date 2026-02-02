@@ -146,6 +146,8 @@ services:
         condition: service_healthy
       auth-service:
         condition: service_started
+      kafka:
+        condition: service_started
     env_file:
       - .env
     environment:
@@ -163,6 +165,9 @@ services:
       # Auth service (for token validation)
       AUTH_SERVICE_URL: http://auth-service:3000/api
       DRIVER_SERVICE_URL: http://driver-service:3000/api
+
+      # Kafka
+      KAFKA_BROKERS: kafka:9092
 
   map-service:
     build:
@@ -193,6 +198,8 @@ services:
         condition: service_started
       redis:
         condition: service_started
+      kafka:
+        condition: service_started
     env_file:
       - .env
     environment:
@@ -206,25 +213,41 @@ services:
       # Redis (for pub/sub or presence)
       REDIS_HOST: redis
       REDIS_PORT: 6379
-  # api-gateway:
-  #   build:
-  #     context: ./node-service/api-gateway
-  #     dockerfile: Dockerfile
-  #   container_name: api-gateway
-  #   restart: always
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - auth-service
-  #     - user-service
-  #     - driver-service
-  #     - notification-service
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     NODE_ENV: development
-  #     PORT: 3000
 
+      # Kafka
+      KAFKA_BROKERS: kafka:9092
+
+  # --------------------
+  # KAFKA
+  # --------------------
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: zookeeper
+    restart: always
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka
+    restart: always
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+      # INTERNAL + EXTERNAL ACCESS
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
   # --------------------
   # VOLUMES
   # --------------------

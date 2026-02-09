@@ -21,5 +21,6 @@ export const publishNotificationEvent = async (event: NotificationEvent) => {
         });
     } catch (error) {
         console.error("Error publishing notification event:", error);
+        throw error;
     }
 }

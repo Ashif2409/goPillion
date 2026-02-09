@@ -117,6 +117,7 @@ export const verifyOTPController = async (req: Request, res: Response) => {
         return res.json({
             success: true,
             accessToken,
+            refreshToken,
             message: "OTP verified successfully"
         });
 

@@ -4,6 +4,7 @@ import { Trip } from "../model/trip.model";
 import { generateOtp } from "../utils/generateOtp";
 import brcypt from "bcrypt";
 import {
+    notifyRideCreated,
     notifyRideRequested,
     notifyRideAccepted,
     notifyOtpGenerated,
@@ -87,7 +88,7 @@ export const createTripDriverController = async (
         //     dest,
         //     tripType,
         // });
-        await notifyRideRequested(driverId, {
+        await notifyRideCreated(driverId, {
             tripId: trip.dataValues.id,
             senderId: driverId,
             srcName: srcName,

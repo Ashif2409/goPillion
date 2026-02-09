@@ -10,6 +10,18 @@ const publish = async (type: EventTypes, userId: string, payload: any) => {
     });
 };
 
+export const notifyRideCreated = async (
+    recipientId: string,
+    payload: {
+        tripId: string;
+        senderId: string;
+        srcName: string;
+        destName: string;
+        price: number;
+    }
+) => {
+    await publish(EventTypes.RIDE_CREATED, recipientId, payload);
+};
 export const notifyRideRequested = async (
     recipientId: string,
     payload: {

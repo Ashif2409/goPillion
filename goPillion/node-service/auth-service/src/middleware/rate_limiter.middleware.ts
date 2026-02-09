@@ -64,7 +64,7 @@ export const otpMobileLimiter = (req: Request, res: Response, next: NextFunction
   }
 
   // Daily limit: 5 OTP
-  if (record.count >= 5) {
+  if (record.count >= 15) {
     return res.status(429).json({
       success: false,
       message: "Daily OTP limit reached. Try tomorrow."

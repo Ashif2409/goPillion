@@ -14,10 +14,37 @@ router.get("/", (_req: Request, res: Response) => {
     res.send({ message: "Admin Service Running" });
 });
 
-// Get all drivers with PENDING KYC status
+/**
+ * @swagger
+ * /api/admin/kyc/kyc-pending:
+ *   get:
+ *     summary: Get all drivers with PENDING KYC status
+ *     tags: [Admin KYC]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of pending KYC documents
+ */
 router.get("/kyc-pending", adminMiddleware, getAllKycPending);
 
-// Get KYC by Driver ID
+/**
+ * @swagger
+ * /api/admin/kyc/driver/{driverId}:
+ *   get:
+ *     summary: Get KYC by Driver ID
+ *     tags: [Admin KYC]
+ *     parameters:
+ *       - in: path
+ *         name: driverId
+ *         required: true
+ *         schema: { type: string }
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Driver KYC details
+ */
 router.get("/driver/:driverId", adminMiddleware, getKycByDriverId);
 
 // Get specific driver KYC details by MongoDB _id of the DriverKyc (or driverId?)
@@ -27,7 +54,29 @@ router.get("/driver/:driverId", adminMiddleware, getKycByDriverId);
 // So it expects the Doc ID.
 router.get("/:id", adminMiddleware, getKycById);
 
-// Update status of a specific document
+/**
+ * @swagger
+ * /api/admin/kyc/document-status:
+ *   put:
+ *     summary: Update status of a specific document
+ *     tags: [Admin KYC]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [driverId, documentType, status]
+ *             properties:
+ *               driverId: { type: string }
+ *               documentType: { type: string }
+ *               status: { type: string, enum: [VERIFIED, REJECTED] }
+ *     responses:
+ *       200:
+ *         description: Status updated successfully
+ */
 router.put("/document-status", adminMiddleware, updateKycDocumentStatus);
 
 export const adminRoutes = router;

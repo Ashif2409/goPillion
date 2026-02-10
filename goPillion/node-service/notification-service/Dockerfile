@@ -5,21 +5,19 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy root monorepo files
+COPY node-service/package*.json node-service/tsconfig.base.json ./
 
-# Install ALL dependencies
+# Copy service-specific files
+WORKDIR /app/notification-service
+COPY node-service/notification-service/package*.json ./
+
 RUN npm install
 
-# Also install esbuild if not in package.json
-RUN npm install --save-dev esbuild typescript @types/node
+COPY node-service/notification-service/tsconfig*.json ./
+COPY node-service/notification-service/src/ ./src/
 
-# Copy source code and configs
-COPY tsconfig*.json ./
-COPY src/ ./src/
-
-# Build using esbuild directly
-# Build using esbuild with packages=external
+# Build using esbuild
 RUN npx esbuild src/main.ts \
     --bundle \
     --platform=node \
@@ -35,18 +33,17 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Copy package.json
-COPY package*.json ./
+COPY node-service/notification-service/package*.json ./
 
-# Install only production dependencies
 RUN npm install --only=production
 
-# Copy compiled JavaScript from builder
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/notification-service/dist ./dist
+
+# Copy source code for Swagger scanning
+COPY node-service/notification-service/src ./src
 
 ENV NODE_ENV=development
 ENV PORT=3000
-
 EXPOSE 3000
 
 CMD ["node", "dist/main.js"]

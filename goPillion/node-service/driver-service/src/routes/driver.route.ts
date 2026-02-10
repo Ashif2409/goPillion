@@ -29,7 +29,22 @@ router.get("/", (_req: Request, res: Response) => {
 });
 
 /**
- * 🔐 KYC Upload APIs
+ * @swagger
+ * /api/driver/kyc/identity-proof:
+ *   put:
+ *     summary: Upload identity proof
+ *     tags: [Driver KYC]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file: { type: string, format: binary }
+ *     responses:
+ *       200: { description: Uploaded successfully }
  */
 router.put(
   "/identity-proof",
@@ -38,6 +53,24 @@ router.put(
   identityProofUploadController
 );
 
+/**
+ * @swagger
+ * /api/driver/kyc/driving-license:
+ *   put:
+ *     summary: Upload driving license
+ *     tags: [Driver KYC]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file: { type: string, format: binary }
+ *     responses:
+ *       200: { description: Uploaded successfully }
+ */
 router.put(
   "/driving-license",
   authMiddleware,
@@ -80,7 +113,16 @@ router.put(
 )
 
 /**
- * 📄 KYC Fetch APIs
+ * @swagger
+ * /api/driver/kyc/status:
+ *   get:
+ *     summary: Get driver's KYC status
+ *     tags: [Driver KYC]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: KYC status details
  */
 router.get(
   "/status",
@@ -135,6 +177,21 @@ router.get(
   getVehicleInfoController
 )
 
+/**
+ * @swagger
+ * /api/driver/kyc/basic-profile/{id}:
+ *   get:
+ *     summary: Get driver's basic profile by user ID
+ *     tags: [Driver KYC]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Basic profile details
+ */
 router.get(
   "/basic-profile/:id",
   getDriverBasicProfileController

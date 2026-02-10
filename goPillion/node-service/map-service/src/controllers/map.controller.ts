@@ -23,3 +23,29 @@ export const getNearbyController = async (req: Request, res: Response) => {
   const places = await findNearby(center, radiusKm);
   return res.json(places);
 };
+
+
+
+export const getRouteDetailsController = async (req: Request, res: Response) => {
+    try {
+        // CHANGED: Use req.query instead of req.body for GET requests
+        const { srcLat, srcLng, destLat, destLng } = req.query;
+
+        if (!srcLat || !srcLng || !destLat || !destLng) {
+            return res.status(400).json({ message: "Coordinates required" });
+        }
+
+        // CHANGED: Convert query strings to Numbers
+        const routeData = await getRouteDetails(
+            Number(srcLat),
+            Number(srcLng),
+            Number(destLat),
+            Number(destLng)
+        );
+
+        return res.json(routeData);
+    } catch (error) {
+        console.error("Map Service Error:", error);
+        return res.status(500).json({ message: "Failed to calculate route" });
+    }
+};

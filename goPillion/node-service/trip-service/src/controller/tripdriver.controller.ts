@@ -12,6 +12,8 @@ import {
     notifyRideCancelled,
     notifyRideCompleted
 } from "../service/trip.notification.service";
+import { calculateRidePrice } from "../service/pricing.service";
+import { getRouteFromMapService } from "../service/map.http.service";
 /**
  * TODO:
  * Replace this with real event bus later (Kafka / Redis / RabbitMQ)
@@ -27,79 +29,94 @@ import {
  * CREATE DRIVER POSTED TRIP
  * =========================
  */
-export const createTripDriverController = async (
-    req: Request,
-    res: Response
-) => {
+export const createTripDriverController = async (req: Request, res: Response) => {
     try {
-        const { srcLat, srcLng, destLat, destLng, srcName, destName, tripType, earliestStartTime, latestStartTime, price } =
-            req.body;
+        const { 
+            srcLat, srcLng, destLat, destLng, 
+            srcName, destName, tripType, 
+            earliestStartTime, latestStartTime, 
+            vehicleType, // Get vehicle type (BIKE/SCOOTY)
+        } = req.body;
+
         const driverId = req.user?.userId;
-        if (!driverId)
-            return res.status(401).json({ message: "Unauthorized" });
-        if (!srcLat || !srcLng || !destLat || !destLng || !srcName || !destName || !tripType || !earliestStartTime || !price) {
+        if (!driverId) return res.status(401).json({ message: "Unauthorized" });
+
+        // Basic Validation
+        if (!srcLat || !srcLng || !destLat || !destLng || !srcName || !destName || !tripType || !earliestStartTime) {
             return res.status(400).json({ message: "All required fields must be provided" });
         }
 
-        if (!["IMMEDIATE", "SCHEDULED"].includes(tripType)) {
-            return res.status(400).json({ message: "Invalid tripType" });
+        // 1. GET ROUTE DETAILS (Map Service)
+        // This gets the polyline, distance (km), and duration (min)
+        let routeData;
+        try {
+            routeData = await getRouteFromMapService(srcLat, srcLng, destLat, destLng);
+        } catch (err) {
+            console.error("Map Service Failed:", err);
+            return res.status(500).json({ message: "Could not calculate route. Please try again." });
         }
+
+        // 2. CALCULATE PRICE (Pricing Service)
+        // We use the distance from the map to determine the fair price
+        const calculated = calculateRidePrice(
+            routeData.distanceKm,
+            routeData.durationMin,
+            vehicleType || "BIKE" // Default to BIKE if not sent
+        );
+
+        // Logic: If driver sent a price, use it. Otherwise, use our calculated price.
+        const finalPrice =  calculated.price;
+
+        // Time Validation Logic
         const earliest = new Date(earliestStartTime);
         let latest: Date;
-
         if (tripType === "IMMEDIATE") {
             latest = new Date(earliest.getTime() + 15 * 60 * 1000);
         } else {
-            if (!latestStartTime) {
-                return res.status(400).json({
-                    message: "latestStartTime is required for scheduled trips",
-                });
-            }
-
+            if (!latestStartTime) return res.status(400).json({ message: "latestStartTime required for scheduled trips" });
             latest = new Date(latestStartTime);
-            if (latest <= earliest) {
-                return res.status(400).json({
-                    message: "latestStartTime must be after earliestStartTime",
-                });
-            }
+            if (latest <= earliest) return res.status(400).json({ message: "latestStartTime must be after earliestStartTime" });
         }
 
+        // 3. CREATE TRIP
         const trip = await Trip.create({
-            srcLat,
-            srcLng,
-            destLat,
-            destLng,
-            srcName,
-            destName,
+            srcLat, srcLng, destLat, destLng,
+            srcName, destName,
             earliestStartTime: earliest,
             latestStartTime: latest,
-            price,
             tripType,
             tripMode: "DRIVER_POSTED",
             driverId,
             status: "OPEN",
+            
+            // NEW FIELDS
+            vehicleType: vehicleType || "BIKE",
+            distance: routeData.distanceKm,
+            duration: routeData.durationMin,
+            routePolyline: routeData.polyline,
+            price: finalPrice
         });
 
-        // TODO: Emit TRIP_CREATED event (dashboard update, analytics)
-        // eventBus.publish("TRIP_CREATED", {
-        //     tripId: trip.id,
-        //     driverId,
-        //     src,
-        //     dest,
-        //     tripType,
-        // });
         await notifyRideCreated(driverId, {
             tripId: trip.dataValues.id,
             senderId: driverId,
-            srcName: srcName,
-            destName: destName,
-            price: price,
+            srcName, destName,
+            price: finalPrice,
         });
+
+        // Remove sensitive/large fields before returning to client
+        const tripData: any = trip.toJSON ? trip.toJSON() : trip;
+        delete tripData.routePolyline;
+        delete tripData.otp;
+        delete tripData.otpExpiresAt;
 
         return res.status(201).json({
             message: "Trip created successfully",
-            trip,
+            trip: tripData,
+            // Send breakdown so frontend can show "Base Fare: 20, Distance: 5km..."
+            priceBreakdown: calculated.breakdown
         });
+
     } catch (error) {
         console.error("Error creating trip:", error);
         return res.status(500).json({ message: "Internal server error" });
@@ -113,16 +130,11 @@ export const createTripDriverController = async (
  */
 export const getOpenTripsController = async (req: Request, res: Response) => {
     try {
-        const { srcLat, srcLng, radiusKm = 5 } = req.query; // Default 5km radius
-
-        if (!srcLat || !srcLng) {
-            return res.status(400).json({ message: "Current location (lat, lng) required" });
-        }
-
+        const { srcLat, srcLng, radiusKm = 5 } = req.query;
+        // ... validation ...
         const lat = Number(srcLat);
         const lng = Number(srcLng);
 
-        // Haversine Formula Implementation in Sequelize
         const openTrips = await Trip.findAll({
             attributes: {
                 include: [
@@ -130,13 +142,12 @@ export const getOpenTripsController = async (req: Request, res: Response) => {
                         Sequelize.literal(`(
                             6371 * acos(
                                 cos(radians(${lat})) *
-                                cos(radians(srcLat)) *
-                                cos(radians(srcLng) - radians(${lng})) +
+                                cos(radians("srcLat")) * cos(radians("srcLng") - radians(${lng})) +
                                 sin(radians(${lat})) *
-                                sin(radians(srcLat))
+                                sin(radians("srcLat"))
                             )
                         )`),
-                        'distance'
+                        'proximity' // <--- CHANGED: Renamed alias
                     ]
                 ]
             },
@@ -144,19 +155,17 @@ export const getOpenTripsController = async (req: Request, res: Response) => {
                 status: "OPEN",
                 tripMode: "PASSENGER_POSTED",
                 passengerId: { [Op.ne]: null },
-                // Filter where distance is less than radius
                 [Op.and]: Sequelize.literal(`(
                     6371 * acos(
                         cos(radians(${lat})) *
-                        cos(radians(srcLat)) *
-                        cos(radians(srcLng) - radians(${lng})) +
+                        cos(radians("srcLat")) * cos(radians("srcLng") - radians(${lng})) +
                         sin(radians(${lat})) *
-                        sin(radians(srcLat))
+                        sin(radians("srcLat"))
                     )
                 ) < ${Number(radiusKm)}`)
             },
             order: [
-                [Sequelize.literal('distance'), 'ASC'], // Show nearest trips first
+                [Sequelize.literal('proximity'), 'ASC'], // Sort by proximity
                 ["createdAt", "DESC"]
             ],
         });

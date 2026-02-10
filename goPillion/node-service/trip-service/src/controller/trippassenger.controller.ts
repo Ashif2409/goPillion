@@ -9,87 +9,85 @@ import {
     notifyOtpGenerated,
     notifyRideCancelled
 } from "../service/trip.notification.service";
+import { calculateRidePrice } from "../service/pricing.service";
+import { getRouteFromMapService } from "../service/map.http.service";
 /**
  * Passenger posts a trip (PASSENGER_POSTED)
  */
-export const createTripPassengerController = async (
-    req: Request,
-    res: Response
-) => {
+export const createTripPassengerController = async (req: Request, res: Response) => {
     try {
         const passengerId = req.user?.userId;
-
         const {
-            srcLat,
-            srcLng,
-            srcName,
-            destLat,
-            destLng,
-            destName,
-            tripType,
-            earliestStartTime,
-            latestStartTime,
+            srcLat, srcLng, srcName,
+            destLat, destLng, destName,
+            tripType, earliestStartTime, latestStartTime,
+            vehicleType // Passenger can request "SCOOTY" specifically
         } = req.body;
 
-        if (
-            !srcLat ||
-            !srcLng ||
-            !srcName ||
-            !destLat ||
-            !destLng ||
-            !destName ||
-            !tripType ||
-            !earliestStartTime
-        ) {
+        if (!srcLat || !srcLng || !destLat || !destLng || !tripType || !earliestStartTime) {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
-        let earliest = new Date(earliestStartTime);
-        let latest: Date;
-
-        if (tripType === "IMMEDIATE") {
-            // IMMEDIATE = 15 min availability window
-            latest = new Date(earliest.getTime() + 15 * 60 * 1000);
-        } else {
-            if (!latestStartTime) {
-                return res.status(400).json({
-                    message: "latestStartTime required for scheduled trips",
-                });
-            }
-            latest = new Date(latestStartTime);
-            if (latest <= earliest) {
-                return res.status(400).json({
-                    message: "latestStartTime must be after earliestStartTime",
-                });
-            }
+        // 1. GET ROUTE DETAILS
+        let routeData;
+        try {
+            routeData = await getRouteFromMapService(srcLat, srcLng, destLat, destLng);
+        } catch (err) {
+            console.error("Map Service Failed:", err);
+            return res.status(500).json({ message: "Could not calculate route." });
         }
 
+        // 2. CALCULATE PRICE
+        // For passengers, this is the "Estimated Fare"
+        const calculated = calculateRidePrice(
+            routeData.distanceKm,
+            routeData.durationMin,
+            vehicleType || "BIKE"
+        );
+
+        // Time Validation
+        let earliest = new Date(earliestStartTime);
+        let latest: Date;
+        if (tripType === "IMMEDIATE") {
+            latest = new Date(earliest.getTime() + 15 * 60 * 1000);
+        } else {
+            if (!latestStartTime) return res.status(400).json({ message: "latestStartTime required" });
+            latest = new Date(latestStartTime);
+            if (latest <= earliest) return res.status(400).json({ message: "Time validation failed" });
+        }
+
+        // 3. CREATE TRIP
         const trip = await Trip.create({
-            srcLat,
-            srcLng,
-            srcName,
-            destLat,
-            destLng,
-            destName,
+            srcLat, srcLng, srcName,
+            destLat, destLng, destName,
             earliestStartTime: earliest,
             latestStartTime: latest,
             passengerId,
             tripType,
             tripMode: "PASSENGER_POSTED",
             status: "OPEN",
+
+            // NEW FIELDS
+            vehicleType: vehicleType || "BIKE",
+            distance: routeData.distanceKm,
+            duration: routeData.durationMin,
+            routePolyline: routeData.polyline,
+            price: calculated.price // Set the standard calculated price
         });
 
-        /**
-         * TODO:
-         * - Publish trip to SEARCH SERVICE (geo-index)
-         * - If IMMEDIATE:
-         *   - Notify nearby ONLINE drivers via NOTIFICATION SERVICE
-         */
+        // Remove sensitive/large fields before returning to client
+        const tripData: any = trip.toJSON ? trip.toJSON() : trip;
+        delete tripData.routePolyline;
+        delete tripData.otp;
+        delete tripData.otpExpiresAt;
 
         return res.status(201).json({
             message: "Trip created successfully",
-            trip,
+            trip: tripData,
+            estimatedPrice: calculated.price,
+            priceBreakdown: calculated.breakdown
         });
+
     } catch (error) {
         console.error("Passenger create trip error:", error);
         return res.status(500).json({ message: "Internal server error" });
@@ -138,16 +136,16 @@ export const getOpenTripsPassengerController = async (req: Request, res: Respons
             attributes: {
                 include: [
                     [
+                        // Math logic remains the same (with quotes fixed previously)
                         Sequelize.literal(`(
                             6371 * acos(
                                 cos(radians(${lat})) *
-                                cos(radians(srcLat)) *
-                                cos(radians(srcLng) - radians(${lng})) +
+                                cos(radians("srcLat")) * cos(radians("srcLng") - radians(${lng})) +
                                 sin(radians(${lat})) *
-                                sin(radians(srcLat))
+                                sin(radians("srcLat"))
                             )
                         )`),
-                        'distance'
+                        'proximity' // <--- CHANGED: Renamed from 'distance' to 'proximity'
                     ]
                 ]
             },
@@ -155,19 +153,18 @@ export const getOpenTripsPassengerController = async (req: Request, res: Respons
                 status: "OPEN",
                 tripMode: "DRIVER_POSTED",
                 driverId: { [Op.ne]: null },
-                // 1. Driver must be starting nearby
                 [Op.and]: Sequelize.literal(`(
                     6371 * acos(
                         cos(radians(${lat})) *
-                        cos(radians(srcLat)) *
-                        cos(radians(srcLng) - radians(${lng})) +
+                        cos(radians("srcLat")) * cos(radians("srcLng") - radians(${lng})) +
                         sin(radians(${lat})) *
-                        sin(radians(srcLat))
+                        sin(radians("srcLat"))
                     )
                 ) < ${Number(radiusKm)}`)
             },
             order: [
-                [Sequelize.literal('distance'), 'ASC'] 
+                // Sort by the new alias 'proximity'
+                [Sequelize.literal('proximity'), 'ASC'] 
             ],
         });
 

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import { Trip } from "../model/trip.model";
 import { generateOtp } from "../utils/generateOtp";
 import brcypt from "bcrypt";
@@ -111,25 +111,54 @@ export const createTripDriverController = async (
  * GET OPEN PASSENGER-POSTED TRIPS (DASHBOARD)
  * ==========================================
  */
-export const getOpenTripsController = async (
-    req: Request,
-    res: Response
-) => {
+export const getOpenTripsController = async (req: Request, res: Response) => {
     try {
-        const { srcLat, srcLng } = req.query;
-        /**
-         * TODO:
-         * Replace this query with Search Service (lat/lng, route matching)
-         */
+        const { srcLat, srcLng, radiusKm = 5 } = req.query; // Default 5km radius
+
+        if (!srcLat || !srcLng) {
+            return res.status(400).json({ message: "Current location (lat, lng) required" });
+        }
+
+        const lat = Number(srcLat);
+        const lng = Number(srcLng);
+
+        // Haversine Formula Implementation in Sequelize
         const openTrips = await Trip.findAll({
+            attributes: {
+                include: [
+                    [
+                        Sequelize.literal(`(
+                            6371 * acos(
+                                cos(radians(${lat})) *
+                                cos(radians(srcLat)) *
+                                cos(radians(srcLng) - radians(${lng})) +
+                                sin(radians(${lat})) *
+                                sin(radians(srcLat))
+                            )
+                        )`),
+                        'distance'
+                    ]
+                ]
+            },
             where: {
-                srcLat: Number(srcLat),
-                srcLng: Number(srcLng),
                 status: "OPEN",
                 tripMode: "PASSENGER_POSTED",
                 passengerId: { [Op.ne]: null },
+                // Filter where distance is less than radius
+                [Op.and]: Sequelize.literal(`(
+                    6371 * acos(
+                        cos(radians(${lat})) *
+                        cos(radians(srcLat)) *
+                        cos(radians(srcLng) - radians(${lng})) +
+                        sin(radians(${lat})) *
+                        sin(radians(srcLat))
+                    )
+                ) < ${Number(radiusKm)}`)
             },
-            order: [["createdAt", "DESC"]],
+            order: [
+                [Sequelize.literal('distance'), 'ASC'], // Show nearest trips first
+                ["createdAt", "DESC"]
+            ],
         });
 
         return res.status(200).json({ openTrips });

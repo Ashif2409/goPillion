@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Trip } from "../model/trip.model";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import { generateOtp } from "../utils/generateOtp";
 import brcypt from "bcrypt";
 import {
@@ -123,32 +123,52 @@ export const getMyTripsPassengerController = async (
  * Passenger searches OPEN DRIVER_POSTED trips
  * (actual filtering should be done by Search Service)
  */
-export const getOpenTripsPassengerController = async (
-    req: Request,
-    res: Response
-) => {
+export const getOpenTripsPassengerController = async (req: Request, res: Response) => {
     try {
-        /**
-         * TODO:
-         * - Call SEARCH SERVICE with srcLat, srcLng, destLat, destLng
-         * - Get matching driver-posted trip IDs
-         * - Fetch only those trips from DB
-         */
-        const { srcLat, srcLng, destLat, destLng } = req.query;
+        const { srcLat, srcLng, radiusKm = 5 } = req.query;
+
+        if (!srcLat || !srcLng) {
+            return res.status(400).json({ message: "Pickup location required" });
+        }
+
+        const lat = Number(srcLat);
+        const lng = Number(srcLng);
 
         const trips = await Trip.findAll({
+            attributes: {
+                include: [
+                    [
+                        Sequelize.literal(`(
+                            6371 * acos(
+                                cos(radians(${lat})) *
+                                cos(radians(srcLat)) *
+                                cos(radians(srcLng) - radians(${lng})) +
+                                sin(radians(${lat})) *
+                                sin(radians(srcLat))
+                            )
+                        )`),
+                        'distance'
+                    ]
+                ]
+            },
             where: {
-                srcLat,
-                srcLng,
-                destLat,
-                destLng,
                 status: "OPEN",
                 tripMode: "DRIVER_POSTED",
-                driverId: {
-                    [Op.ne]: null,
-                },
+                driverId: { [Op.ne]: null },
+                // 1. Driver must be starting nearby
+                [Op.and]: Sequelize.literal(`(
+                    6371 * acos(
+                        cos(radians(${lat})) *
+                        cos(radians(srcLat)) *
+                        cos(radians(srcLng) - radians(${lng})) +
+                        sin(radians(${lat})) *
+                        sin(radians(srcLat))
+                    )
+                ) < ${Number(radiusKm)}`)
             },
-            order: [["createdAt", "DESC"]],
+            order: [
+                [Sequelize.literal('distance'), 'ASC'] 
+            ],
         });
 
         return res.status(200).json({ trips });

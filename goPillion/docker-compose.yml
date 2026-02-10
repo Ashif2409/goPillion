@@ -226,6 +226,27 @@ services:
       KAFKA_BROKERS: kafka:9092
       FIREBASE_SERVICE_ACCOUNT: ${FIREBASE_SERVICE_ACCOUNT}
 
+  message-service:
+    build:
+      context: ./
+      dockerfile: ./node-service/message-service/Dockerfile
+    container_name: message-service
+    restart: always
+    ports:
+      - "3333:3333"
+    depends_on:
+      auth-service:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      PORT: 3333
+      HOST: 0.0.0.0
+      MONGODB_URI: ${MESSAGE_MONGO_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_SERVICE_URL: http://auth-service:3000/api
+
   # --------------------
   # KAFKA (Unchanged)
   # --------------------

@@ -1,49 +1,106 @@
 import { Kafka } from "kafkajs";
 import { notifyUser } from "../service/notification.service";
 import { EventTypes } from "../types/event.types";
+import { getUserSocket } from "../websocket/socket.store";
 
+/* -------------------- Kafka Client -------------------- */
 const kafka = new Kafka({
-    clientId: "notification-service",
-    brokers: (process.env.KAFKA_BROKERS || "kafka:9092").split(","),
+  clientId: "notification-service",
+  brokers: (process.env.KAFKA_BROKERS || "kafka:9092").split(","),
 });
 
-const consumer = kafka.consumer({ groupId: "notification-group" });
+/* ---------------- Notification Consumer ---------------- */
+const notificationConsumer = kafka.consumer({
+  groupId: "notification-group",
+});
 
-export const startKafkaConsumer = async () => {
-    try {
-        await consumer.connect();
-        await consumer.subscribe({ topic: "notification.events", fromBeginning: true });
+export const startNotificationConsumer = async () => {
+  await notificationConsumer.connect();
+  await notificationConsumer.subscribe({
+    topic: "notification.events",
+    fromBeginning: true,
+  });
 
-        console.log("Kafka Consumer connected and subscribed to notification.events");
+  console.log("✅ Notification consumer subscribed");
 
-        await consumer.run({
-            eachMessage: async ({ topic, partition, message }) => {
-                try {
-                    if (!message.value) return;
+  await notificationConsumer.run({
+    eachMessage: async ({ topic, message }) => {
+      if (!message.value) return;
 
-                    const eventData = JSON.parse(message.value.toString());
-                    console.log(`Received Kafka message from ${topic}:`, eventData);
+      try {
+        const { type, userId, payload } = JSON.parse(
+          message.value.toString()
+        );
 
-                    const { type, userId, payload } = eventData;
-
-                    if (type && userId) {
-                        await notifyUser(userId, type as EventTypes, payload);
-                    }
-                } catch (error) {
-                    console.error("Error processing Kafka message:", error);
-                }
-            },
-        });
-    } catch (error) {
-        console.error("Error starting Kafka consumer:", error);
-    }
+        if (type && userId) {
+          await notifyUser(userId, type as EventTypes, payload);
+        }
+      } catch (err) {
+        console.error("❌ Notification consumer error", err);
+      }
+    },
+  });
 };
 
-export const stopKafkaConsumer = async () => {
-    try {
-        await consumer.disconnect();
-        console.log("Kafka Consumer disconnected");
-    } catch (error) {
-        console.error("Error stopping Kafka consumer:", error);
-    }
+export const stopNotificationConsumer = async () => {
+  await notificationConsumer.disconnect();
+  console.log("🛑 Notification consumer stopped");
+};
+
+/* -------------------- Chat Consumer -------------------- */
+const chatConsumer = kafka.consumer({
+  groupId: "notification-group-chat",
+});
+
+export const startChatConsumer = async () => {
+  await chatConsumer.connect();
+  await chatConsumer.subscribe({
+    topic: "chat-messages",
+    fromBeginning: false,
+  });
+
+  console.log("✅ Chat consumer subscribed");
+
+  await chatConsumer.run({
+    eachMessage: async ({ message }) => {
+      if (!message.value) return;
+
+      try {
+        const { receiverId, payload } = JSON.parse(
+          message.value.toString()
+        );
+
+        const ws = getUserSocket(receiverId);
+
+        if (ws && ws.readyState === ws.OPEN) {
+          ws.send(
+            JSON.stringify({
+              event: "receive_message",
+              data: payload,
+            })
+          );
+        } else {
+          console.log("User offline, persist message");
+        }
+      } catch (err) {
+        console.error("❌ Chat consumer error", err);
+      }
+    },
+  });
+};
+
+export const stopChatConsumer = async () => {
+  await chatConsumer.disconnect();
+  console.log("🛑 Chat consumer stopped");
+};
+
+/* -------------------- Aggregator -------------------- */
+export const startKafkaConsumers = async () => {
+  await startNotificationConsumer();
+  await startChatConsumer();
+};
+
+export const stopKafkaConsumers = async () => {
+  await stopNotificationConsumer();
+  await stopChatConsumer();
 };

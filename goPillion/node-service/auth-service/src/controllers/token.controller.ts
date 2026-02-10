@@ -3,16 +3,21 @@ import Tokens from '../models/BlockToken';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
 import { generateAccessToken } from '../utils/generateToken';
+import redis from '../utils/redisUtils'
 import dotenv from 'dotenv'
 dotenv.config();
 
 
 export const generateRefreshTokenController = async (req: Request, res: Response) => {
   try {
-    // @ts-ignore
     const token = req.cookies.refreshToken;
     if (!token) return res.sendStatus(401);
 
+    // 1. Check Redis blacklist
+    const isBlacklistedRedis = await redis.get(`blacklist_${token}`);
+    if (isBlacklistedRedis) return res.sendStatus(403);
+
+    // 2. Check DB blacklist (fallback)
     const isBlocked = await Tokens.findOne({ where: { token } });
     if (isBlocked) return res.sendStatus(403);
     console.log(process.env.JWT_REFRESH_SECRET)

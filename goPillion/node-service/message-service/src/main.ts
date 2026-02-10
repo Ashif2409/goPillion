@@ -11,6 +11,7 @@ dotenv.config();
 
 import messageRoutes from "./routes/message.routes";
 import { connectToMongoDB } from "./db/mongodb.connection";
+import { setupSwagger } from "./swagger/swagger";
 
 const app = express();
 const port = Number(process.env.PORT) || 3333;
@@ -20,6 +21,7 @@ app.use("/assets", express.static(path.join(__dirname, "assets")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+setupSwagger(app);
 
 /* -------------------- Routes -------------------- */
 app.get("/api", (_req, res) => {

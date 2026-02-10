@@ -1,8 +1,14 @@
 import { Request, Response } from "express";
 import { Trip } from "../model/trip.model";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import { generateOtp } from "../utils/generateOtp";
 import brcypt from "bcrypt";
+import {
+    notifyRideRequested,
+    notifyRideAccepted,
+    notifyOtpGenerated,
+    notifyRideCancelled
+} from "../service/trip.notification.service";
 /**
  * Passenger posts a trip (PASSENGER_POSTED)
  */
@@ -117,32 +123,52 @@ export const getMyTripsPassengerController = async (
  * Passenger searches OPEN DRIVER_POSTED trips
  * (actual filtering should be done by Search Service)
  */
-export const getOpenTripsPassengerController = async (
-    req: Request,
-    res: Response
-) => {
+export const getOpenTripsPassengerController = async (req: Request, res: Response) => {
     try {
-        /**
-         * TODO:
-         * - Call SEARCH SERVICE with srcLat, srcLng, destLat, destLng
-         * - Get matching driver-posted trip IDs
-         * - Fetch only those trips from DB
-         */
-        const { srcLat, srcLng, destLat, destLng } = req.query;
+        const { srcLat, srcLng, radiusKm = 5 } = req.query;
+
+        if (!srcLat || !srcLng) {
+            return res.status(400).json({ message: "Pickup location required" });
+        }
+
+        const lat = Number(srcLat);
+        const lng = Number(srcLng);
 
         const trips = await Trip.findAll({
+            attributes: {
+                include: [
+                    [
+                        Sequelize.literal(`(
+                            6371 * acos(
+                                cos(radians(${lat})) *
+                                cos(radians(srcLat)) *
+                                cos(radians(srcLng) - radians(${lng})) +
+                                sin(radians(${lat})) *
+                                sin(radians(srcLat))
+                            )
+                        )`),
+                        'distance'
+                    ]
+                ]
+            },
             where: {
-                srcLat,
-                srcLng,
-                destLat,
-                destLng,
                 status: "OPEN",
                 tripMode: "DRIVER_POSTED",
-                driverId: {
-                    [Op.ne]: null,
-                },
+                driverId: { [Op.ne]: null },
+                // 1. Driver must be starting nearby
+                [Op.and]: Sequelize.literal(`(
+                    6371 * acos(
+                        cos(radians(${lat})) *
+                        cos(radians(srcLat)) *
+                        cos(radians(srcLng) - radians(${lng})) +
+                        sin(radians(${lat})) *
+                        sin(radians(srcLat))
+                    )
+                ) < ${Number(radiusKm)}`)
             },
-            order: [["createdAt", "DESC"]],
+            order: [
+                [Sequelize.literal('distance'), 'ASC'] 
+            ],
         });
 
         return res.status(200).json({ trips });
@@ -187,6 +213,7 @@ export const requestDriverController = async (
 ) => {
     try {
         const passengerId = req.user?.userId;
+        if (!passengerId) return res.status(401).json({ message: "Unauthorized" });
         const { id } = req.params;
 
         const trip = await Trip.findByPk(id);
@@ -212,6 +239,16 @@ export const requestDriverController = async (
          * TODO:
          * - Notify driver via NOTIFICATION SERVICE
          */
+        // Notify driver
+        if (trip.dataValues.driverId) {
+            await notifyRideRequested(trip.dataValues.driverId, {
+                tripId: trip.dataValues.id,
+                senderId: passengerId,
+                srcName: trip.dataValues.srcName,
+                destName: trip.dataValues.destName,
+                price: trip.dataValues.price
+            });
+        }
 
         return res.status(200).json({
             message: "Driver requested successfully",
@@ -232,6 +269,7 @@ export const confirmDriverController = async (
 ) => {
     try {
         const passengerId = req.user?.userId;
+        if (!passengerId) return res.status(401).json({ message: "Unauthorized" });
         const { id } = req.params;
 
         const trip = await Trip.findByPk(id);
@@ -259,6 +297,21 @@ export const confirmDriverController = async (
         // 🔔 SEND OTP TO PASSENGER (SELF)
         // notificationService.sendOtp(passengerId, otp);
         console.log("Generated OTP for trip confirmation:", otp);
+
+        // Notify driver
+        if (trip.dataValues.driverId) {
+            await notifyRideAccepted(trip.dataValues.driverId, {
+                tripId: trip.dataValues.id,
+                passengerId: passengerId,
+                status: "CONFIRMED"
+            });
+        }
+
+        // Send OTP to self (Passenger)
+        await notifyOtpGenerated(passengerId, {
+            tripId: trip.dataValues.id,
+            otp: otp
+        });
         return res.status(200).json({
             message: "Driver confirmed successfully",
             trip,
@@ -302,6 +355,7 @@ export const cancelTripPassengerController = async (
 ) => {
     try {
         const passengerId = req.user?.userId;
+        if (!passengerId) return res.status(401).json({ message: "Unauthorized" });
         const trip = await Trip.findByPk(req.params.id);
 
         if (!trip) {
@@ -323,6 +377,12 @@ export const cancelTripPassengerController = async (
          * - Notify driver (if assigned)
          * - Remove from SEARCH SERVICE
          */
+        if (trip.dataValues.driverId) {
+            await notifyRideCancelled(trip.dataValues.driverId, {
+                tripId: trip.dataValues.id,
+                reason: "Passenger cancelled the trip"
+            });
+        }
 
         return res.status(200).json({
             message: "Trip cancelled successfully",
@@ -343,6 +403,7 @@ export const deleteTripPassengerController = async (
 ) => {
     try {
         const passengerId = req.user?.userId;
+        if (!passengerId) return res.status(401).json({ message: "Unauthorized" });
         const trip = await Trip.findByPk(req.params.id);
 
         if (!trip) {

@@ -9,11 +9,11 @@ export const authenticateSocket = async (
     console.log('🔌 WebSocket connection attempt');
     console.log('Auth:', socket.handshake.auth);
     console.log('Query:', socket.handshake.query);
-    
+
     const token = socket.handshake.auth?.token || socket.handshake.query?.token;
-    
-    console.log('Token:', token ? 'Present' : 'Missing');
-    
+
+    console.log('Token:', token ? `Present-${token}` : 'Missing');
+
     if (!token) {
       console.error('❌ No token provided');
       return next(new Error("Unauthorized: No token provided"));
@@ -21,14 +21,14 @@ export const authenticateSocket = async (
 
     console.log('🔍 Verifying token...');
     const user = await verifyTokenWithAuthService(token as string);
-    
+
     console.log('✅ Token verified:', user);
 
     socket.data.userId = user.userId;
     socket.data.role = user.role;
 
     next();
-  } catch (error:any) {
+  } catch (error: any) {
     console.error('❌ Socket authentication failed:', error);
     next(new Error(`Unauthorized: ${error.message || 'Token verification failed'}`));
   }

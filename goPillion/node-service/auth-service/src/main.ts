@@ -1,6 +1,7 @@
 import express from "express";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
+import cors from "cors";
 dotenv.config();
 
 
@@ -13,6 +14,7 @@ import { authLimiter } from "./middleware/rate_limiter.middleware";
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
+app.use(cors());
 setupSwagger(app);
 
 (async () => {
@@ -27,10 +29,10 @@ setupSwagger(app);
   }
 })();
 
+app.use("/api/profile", profileRoutes);
 app.use(authLimiter);
 app.use("/api/auth", otpRoutes);
-app.use("/api/profile", profileRoutes);
 app.use("/api", tokenRoutes);
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+const PORT = parseInt(process.env.PORT || '3000', 10);
+app.listen(PORT,'0.0.0.0', () => console.log(`Server running on http://localhost:${PORT}`));

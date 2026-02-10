@@ -1,8 +1,17 @@
 import { Request, Response } from "express";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import { Trip } from "../model/trip.model";
 import { generateOtp } from "../utils/generateOtp";
 import brcypt from "bcrypt";
+import {
+    notifyRideCreated,
+    notifyRideRequested,
+    notifyRideAccepted,
+    notifyOtpGenerated,
+    notifyRideStarted,
+    notifyRideCancelled,
+    notifyRideCompleted
+} from "../service/trip.notification.service";
 /**
  * TODO:
  * Replace this with real event bus later (Kafka / Redis / RabbitMQ)
@@ -26,7 +35,8 @@ export const createTripDriverController = async (
         const { srcLat, srcLng, destLat, destLng, srcName, destName, tripType, earliestStartTime, latestStartTime, price } =
             req.body;
         const driverId = req.user?.userId;
-
+        if (!driverId)
+            return res.status(401).json({ message: "Unauthorized" });
         if (!srcLat || !srcLng || !destLat || !destLng || !srcName || !destName || !tripType || !earliestStartTime || !price) {
             return res.status(400).json({ message: "All required fields must be provided" });
         }
@@ -78,6 +88,13 @@ export const createTripDriverController = async (
         //     dest,
         //     tripType,
         // });
+        await notifyRideCreated(driverId, {
+            tripId: trip.dataValues.id,
+            senderId: driverId,
+            srcName: srcName,
+            destName: destName,
+            price: price,
+        });
 
         return res.status(201).json({
             message: "Trip created successfully",
@@ -94,25 +111,54 @@ export const createTripDriverController = async (
  * GET OPEN PASSENGER-POSTED TRIPS (DASHBOARD)
  * ==========================================
  */
-export const getOpenTripsController = async (
-    req: Request,
-    res: Response
-) => {
+export const getOpenTripsController = async (req: Request, res: Response) => {
     try {
-        const { srcLat, srcLng } = req.query;
-        /**
-         * TODO:
-         * Replace this query with Search Service (lat/lng, route matching)
-         */
+        const { srcLat, srcLng, radiusKm = 5 } = req.query; // Default 5km radius
+
+        if (!srcLat || !srcLng) {
+            return res.status(400).json({ message: "Current location (lat, lng) required" });
+        }
+
+        const lat = Number(srcLat);
+        const lng = Number(srcLng);
+
+        // Haversine Formula Implementation in Sequelize
         const openTrips = await Trip.findAll({
+            attributes: {
+                include: [
+                    [
+                        Sequelize.literal(`(
+                            6371 * acos(
+                                cos(radians(${lat})) *
+                                cos(radians(srcLat)) *
+                                cos(radians(srcLng) - radians(${lng})) +
+                                sin(radians(${lat})) *
+                                sin(radians(srcLat))
+                            )
+                        )`),
+                        'distance'
+                    ]
+                ]
+            },
             where: {
-                srcLat: Number(srcLat),
-                srcLng: Number(srcLng),
                 status: "OPEN",
                 tripMode: "PASSENGER_POSTED",
                 passengerId: { [Op.ne]: null },
+                // Filter where distance is less than radius
+                [Op.and]: Sequelize.literal(`(
+                    6371 * acos(
+                        cos(radians(${lat})) *
+                        cos(radians(srcLat)) *
+                        cos(radians(srcLng) - radians(${lng})) +
+                        sin(radians(${lat})) *
+                        sin(radians(srcLat))
+                    )
+                ) < ${Number(radiusKm)}`)
             },
-            order: [["createdAt", "DESC"]],
+            order: [
+                [Sequelize.literal('distance'), 'ASC'], // Show nearest trips first
+                ["createdAt", "DESC"]
+            ],
         });
 
         return res.status(200).json({ openTrips });
@@ -186,6 +232,7 @@ export const sendRequestController = async (
 ) => {
     try {
         const driverId = req.user?.userId;
+        if (!driverId) return res.status(401).json({ message: "Unauthorized" });
         const { id } = req.params;
 
         const trip = await Trip.findByPk(id);
@@ -207,14 +254,16 @@ export const sendRequestController = async (
             status: "REQUESTED",
         });
 
-        // TODO: Notify passenger that a driver requested their trip
-        // eventBus.publish("TRIP_REQUESTED", {
-        //     tripId: trip.id,
-        //     driverId,
-        //     passengerId: trip.passengerId,
-        //     src: trip.src,
-        //     dest: trip.dest,
-        // });
+        // Notify passenger
+        if (trip.dataValues.passengerId) {
+            await notifyRideRequested(trip.dataValues.passengerId, {
+                tripId: trip.dataValues.id,
+                senderId: driverId,
+                srcName: trip.dataValues.srcName,
+                destName: trip.dataValues.destName,
+                price: trip.dataValues.price
+            });
+        }
 
         return res.status(200).json({
             message: "Request sent successfully",
@@ -262,6 +311,7 @@ export const confirmTripController = async (
 ) => {
     try {
         const driverId = req.user?.userId;
+        if (!driverId) return res.status(401).json({ message: "Unauthorized" });
         const { id } = req.params;
 
         const trip = await Trip.findByPk(id);
@@ -284,29 +334,29 @@ export const confirmTripController = async (
         const otp = generateOtp();
         const hashedOtp = brcypt.hashSync(otp, 10);
         await trip.update({
-            otp:hashedOtp,
+            otp: hashedOtp,
             otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 min
             otpVerified: false,
             status: "CONFIRMED",
             driverId: driverId
         });
 
-        // await trip.update({ status: "CONFIRMED" });
-        // await trip.update({ driverId: driverId });
-
-        // TODO: Notify passenger about confirmation
-        // eventBus.publish("TRIP_CONFIRMED", {
-        //     tripId: trip.id,
-        //     driverId,
-        //     passengerId: trip.passengerId,
-        // });
         console.log("Generated OTP for trip confirmation:", otp);
-        //TODO: Send OTP to passenger via SMS/notification
-        // eventBus.publish("TRIP_<OTP_SENT>", {
-        //     tripId: trip.id,
-        //     otp: otp,
-        //     passengerId: trip.passengerId,
-        // });
+
+        // Notify passenger about confirmation and OTP
+        if (trip.dataValues.passengerId) {
+            await notifyRideAccepted(trip.dataValues.passengerId, {
+                tripId: trip.dataValues.id,
+                driverId: driverId,
+                status: "CONFIRMED"
+            });
+
+            await notifyOtpGenerated(trip.dataValues.passengerId, {
+                tripId: trip.dataValues.id,
+                otp: otp
+            });
+        }
+
         return res.status(200).json({
             message: "Trip confirmed successfully",
             trip,
@@ -324,6 +374,7 @@ export const verifyOtpController = async (
 ) => {
     try {
         const driverId = req.user?.userId;
+        if (!driverId) return res.status(401).json({ message: "Unauthorized" });
         const { id } = req.params;
         const { otp } = req.body;
         const trip = await Trip.findByPk(id);
@@ -345,7 +396,15 @@ export const verifyOtpController = async (
             return res.status(400).json({ message: "Invalid OTP" });
         }
 
-        await trip.update({ otpVerified: true , status: "ONGOING" });
+        await trip.update({ otpVerified: true, status: "ONGOING" });
+
+        // Notify passenger that ride has started
+        if (trip.dataValues.passengerId) {
+            await notifyRideStarted(trip.dataValues.passengerId, {
+                tripId: trip.dataValues.id,
+                startTime: new Date()
+            });
+        }
 
         return res.status(200).json({
             message: "OTP verified successfully",
@@ -368,6 +427,7 @@ export const cancelTripController = async (
 ) => {
     try {
         const driverId = req.user?.userId;
+        if (!driverId) return res.status(401).json({ message: "Unauthorized" });
         const { id } = req.params;
 
         const trip = await Trip.findByPk(id);
@@ -386,12 +446,13 @@ export const cancelTripController = async (
 
         await trip.update({ status: "CANCELLED" });
 
-        // TODO: Notify other party + dashboard update
-        // eventBus.publish("TRIP_CANCELLED", {
-        //     tripId: trip.id,
-        //     driverId,
-        //     passengerId: trip.passengerId,
-        // });
+        // Notify passenger (if assigned)
+        if (trip.dataValues.passengerId) {
+            await notifyRideCancelled(trip.dataValues.passengerId, {
+                tripId: trip.dataValues.id,
+                reason: "Driver cancelled the trip"
+            });
+        }
 
         return res.status(200).json({
             message: "Trip cancelled successfully",
@@ -414,6 +475,7 @@ export const completeTripController = async (
 ) => {
     try {
         const driverId = req.user?.userId;
+        if (!driverId) return res.status(401).json({ message: "Unauthorized" });
         const { id } = req.params;
 
         const trip = await Trip.findByPk(id);
@@ -432,12 +494,13 @@ export const completeTripController = async (
 
         await trip.update({ status: "COMPLETED" });
 
-        // TODO: Trigger rating flow + payment settlement
-        // eventBus.publish("TRIP_COMPLETED", {
-        //     tripId: trip.id,
-        //     driverId,
-        //     passengerId: trip.passengerId,
-        // });
+        // Notify passenger
+        if (trip.dataValues.passengerId) {
+            await notifyRideCompleted(trip.dataValues.passengerId, {
+                tripId: trip.dataValues.id,
+                price: trip.dataValues.price
+            });
+        }
 
         return res.status(200).json({
             message: "Trip completed successfully",

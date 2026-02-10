@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import path from 'path';
-
+import cors from 'cors'
 // Only load .env in non-production
 if (process.env.NODE_ENV !== 'production') {
   dotenv.config({
@@ -21,7 +21,7 @@ const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
-
+app.use(cors());
 // Routes
 app.get('/', (req, res) => {
   res.send({ message: 'Hello API' });

@@ -1,38 +1,53 @@
 import { NotificationModel } from "../schema/notification.schema";
-import { isUserOnline, getUserSocketId } from "../websocket/socket.store";
+import { isUserOnline, getUserSocket } from "../websocket/socket.store";
 import { EventTypes } from "../types/event.types";
-
-
-let io: any; // injected socket instance
-
-export const setSocketInstance = (socketIO: any) => {
-  io = socketIO;
-};
+import WebSocket from "ws";
+import { sendPushNotification } from "./fcm.service";
 
 export const notifyUser = async (
   userId: string,
   type: EventTypes,
   payload: any
 ) => {
+  const title = payload.title || type;
+  const body = payload.body || `New update for ${type.replace('_', ' ')}`;
+
   // 1️⃣ Store notification
   const notification = await NotificationModel.create({
     userId,
     type,
-    title: payload.title || type,
-    body: payload.body || "",
+    title,
+    body,
     metadata: payload,
     isRead: false,
   });
 
-  // 2️⃣ WebSocket if online
+  // 2️⃣ Send via WebSocket if online, else via FCM
   if (isUserOnline(userId)) {
-    const socketId = getUserSocketId(userId);
-    if (socketId) {
-      io.to(socketId).emit(type, notification);
-    }
-  }
+    const ws = getUserSocket(userId);
 
-  // 3️⃣ FCM later (ignored for now)
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        event: type,
+        data: notification,
+      }));
+
+      // Update delivery status
+      await NotificationModel.findByIdAndUpdate(notification._id, {
+        "delivery.socket": true
+      });
+    }
+  } else {
+    // 3️⃣ Send Push Notification via FCM if user is NOT online
+    console.log(`User ${userId} is offline. Sending FCM push notification.`);
+    await sendPushNotification(userId, title, body, payload);
+
+    // Update delivery status
+    await NotificationModel.findByIdAndUpdate(notification._id, {
+      "delivery.push": true
+    });
+  }
 
   return notification;
 };
+

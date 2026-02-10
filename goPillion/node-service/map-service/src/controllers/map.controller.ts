@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { calculateDistance } from '../services/osrm.service';
+import { getRouteDetails } from '../services/osrm.service';
 import { findNearby } from '../services/nominatim.service';
 
 export const getDistanceController = async (req: Request, res: Response) => {
@@ -9,8 +9,8 @@ export const getDistanceController = async (req: Request, res: Response) => {
     return res.status(400).json({ message: 'src and dest required' });
   }
 
-  const result = await calculateDistance({ lat: srcLat, lng: srcLng }, { lat: destLat, lng: destLng });
-  return res.json(result);
+  const result = await getRouteDetails(Number(srcLat), Number(srcLng), Number(destLat), Number(destLng));
+  return res.json(result.distanceKm);
 };
 
 export const getNearbyController = async (req: Request, res: Response) => {

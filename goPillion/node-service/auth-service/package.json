@@ -119,6 +119,7 @@
     "pg-hstore": "^2.3.4",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
-    "twilio": "^5.11.1"
+    "twilio": "^5.11.1",
+    "cors": "^2.8.5"
   }
 }

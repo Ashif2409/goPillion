@@ -109,6 +109,7 @@
     "mongoose": "^9.0.2",
     "multer": "^2.0.2",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^4.6.3"
+    "swagger-ui-express": "^4.6.3",
+    "cors": "^2.8.5"
   }
 }

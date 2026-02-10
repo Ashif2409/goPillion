@@ -144,6 +144,8 @@ services:
         condition: service_healthy
       auth-service:
         condition: service_started
+      map-service:
+        condition: service_started
       kafka:
         condition: service_healthy # Updated from started to healthy
     env_file:
@@ -160,6 +162,7 @@ services:
       AUTH_SERVICE_URL: http://auth-service:3000/api
       DRIVER_SERVICE_URL: http://driver-service:3000/api
       KAFKA_BROKERS: kafka:9092
+      MAP_SERVICE_URL: http://map-service:3000/api/maps
 
   map-service:
     build:

@@ -23,6 +23,12 @@
     },
     {
       "path": "./map-service"
+    },
+    {
+      "path": "./message-service-e2e"
+    },
+    {
+      "path": "./message-service"
     }
   ]
 }

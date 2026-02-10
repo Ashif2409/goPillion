@@ -43,9 +43,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
             const { user } = response.data;
             const { userId, role } = user;
 
-            if (role !== 'USER') {
-                return res.status(403).json({ message: 'Forbidden: Insufficient role' });
-            }
+           
 
             req.user = { userId, role }; // Attach user info to request
             next();

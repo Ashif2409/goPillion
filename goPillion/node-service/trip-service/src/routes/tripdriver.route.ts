@@ -19,7 +19,24 @@ import { driverKycVerifiedMiddleware } from "../middleware/driverKycStatus.middl
 const router = Router();
 
 /**
- * Driver posts a trip
+ * @swagger
+ * /api/driver/trip:
+ *   post:
+ *     summary: Driver posts a new trip
+ *     tags: [Trip - Driver]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Trip'
+ *     responses:
+ *       201:
+ *         description: Trip created successfully
+ *       403:
+ *         description: KYC not verified
  */
 router.post(
     "/",
@@ -29,8 +46,16 @@ router.post(
 );
 
 /**
- * Driver dashboard
- * Open passenger-posted trips (filtered later via search service)
+ * @swagger
+ * /api/driver/trip/open:
+ *   get:
+ *     summary: Get open passenger-posted trips
+ *     tags: [Trip - Driver]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of open trips
  */
 router.get(
     "/open",
@@ -40,7 +65,16 @@ router.get(
 
 
 /**
- * Get my trips
+ * @swagger
+ * /api/driver/trip:
+ *   get:
+ *     summary: Get driver's trips
+ *     tags: [Trip - Driver]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of driver's trips
  */
 router.get(
     "/",
@@ -50,7 +84,24 @@ router.get(
 );
 
 /**
- * Get trip details
+ * @swagger
+ * /api/driver/trip/{id}:
+ *   get:
+ *     summary: Get trip details by ID
+ *     tags: [Trip - Driver]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Trip details
+ *       404:
+ *         description: Trip not found
  */
 router.get(
     "/:id",
@@ -59,7 +110,22 @@ router.get(
 );
 
 /**
- * Driver requests passenger-posted trip
+ * @swagger
+ * /api/driver/trip/{id}/request:
+ *   post:
+ *     summary: Driver requests a passenger-posted trip
+ *     tags: [Trip - Driver]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Request sent successfully
  */
 router.post(
     "/:id/request",
@@ -68,6 +134,18 @@ router.post(
     sendRequestController
 );
 
+/**
+ * @swagger
+ * /api/driver/trip/requests:
+ *   get:
+ *     summary: Get all trip requests for driver
+ *     tags: [Trip - Driver]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of trip requests
+ */
 router.get(
     "/requests",
     driverAuthMiddleware,
@@ -76,7 +154,22 @@ router.get(
 )
 
 /**
- * Driver confirms passenger on driver-posted trip
+ * @swagger
+ * /api/driver/trip/{id}/confirm:
+ *   put:
+ *     summary: Driver confirms passenger on driver-posted trip
+ *     tags: [Trip - Driver]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Trip confirmed
  */
 router.put(
     "/:id/confirm",
@@ -86,14 +179,56 @@ router.put(
 );
 
 
+/**
+ * @swagger
+ * /api/driver/trip/{id}/verify-otp:
+ *   put:
+ *     summary: Driver verifies OTP to start trip
+ *     tags: [Trip - Driver]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [otp]
+ *             properties:
+ *               otp: { type: string, example: "123456" }
+ *     responses:
+ *       200:
+ *         description: OTP verified, trip started
+ */
 router.put(
     "/:id/verify-otp",
     driverAuthMiddleware,
     driverKycVerifiedMiddleware,
-    verifyOtpController 
+    verifyOtpController
 )
 /**
- * Driver cancels a trip
+ * @swagger
+ * /api/driver/trip/{id}/cancel:
+ *   put:
+ *     summary: Driver cancels a trip
+ *     tags: [Trip - Driver]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Trip cancelled
  */
 router.put(
     "/:id/cancel",
@@ -103,7 +238,22 @@ router.put(
 );
 
 /**
- * Driver marks trip as completed
+ * @swagger
+ * /api/driver/trip/{id}/complete:
+ *   put:
+ *     summary: Driver marks trip as completed
+ *     tags: [Trip - Driver]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Trip completed
  */
 router.put(
     "/:id/complete",
@@ -113,7 +263,22 @@ router.put(
 );
 
 /**
- * Driver deletes own OPEN trip
+ * @swagger
+ * /api/driver/trip/{id}:
+ *   delete:
+ *     summary: Driver deletes own OPEN trip
+ *     tags: [Trip - Driver]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Trip deleted
  */
 router.delete(
     "/:id",

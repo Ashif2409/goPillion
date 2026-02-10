@@ -82,7 +82,48 @@ router.get("/", authMiddleware, getProfileController);
 router.put("/", authMiddleware, updateProfileController);
 
 
+/**
+ * @swagger
+ * /api/profile/admin:
+ *   post:
+ *     summary: Admin login
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Admin logged in successfully
+ *       401:
+ *         description: Invalid credentials
+ */
 router.post("/admin", adminLoginController);
+
+/**
+ * @swagger
+ * /api/profile/logout:
+ *   post:
+ *     summary: Logout user
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logged out successfully
+ *       401:
+ *         description: Unauthorized
+ */
 router.post("/logout", authMiddleware, logoutController);
 
 export const profileRoutes = router;

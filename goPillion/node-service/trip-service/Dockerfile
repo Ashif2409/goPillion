@@ -5,20 +5,19 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy root monorepo files
+COPY node-service/package*.json node-service/tsconfig.base.json ./
 
-# Install ALL dependencies
+# Copy service-specific files
+WORKDIR /app/trip-service
+COPY node-service/trip-service/package*.json ./
+
 RUN npm install
 
-# Also install esbuild if not in package.json
-RUN npm install --save-dev esbuild typescript @types/node
+COPY node-service/trip-service/tsconfig*.json ./
+COPY node-service/trip-service/src/ ./src/
 
-# Copy source code and configs
-COPY tsconfig*.json ./
-COPY src/ ./src/
-
-# Build using esbuild directly
+# Build using esbuild
 RUN npx esbuild src/main.ts \
     --bundle \
     --platform=node \
@@ -36,6 +35,7 @@ RUN npx esbuild src/main.ts \
     --external:bcrypt \
     --external:kafkajs \
     --external:redis
+
 # ---------------------------
 # STAGE 2: Run the service
 # ---------------------------
@@ -43,18 +43,17 @@ FROM node:18-alpine AS runner
 
 WORKDIR /app
 
-# Copy package.json
-COPY package*.json ./
+COPY node-service/trip-service/package*.json ./
 
-# Install only production dependencies
 RUN npm install --only=production
 
-# Copy compiled JavaScript from builder
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/trip-service/dist ./dist
+
+# Copy source code for Swagger scanning
+COPY node-service/trip-service/src ./src
 
 ENV NODE_ENV=development
 ENV PORT=3000
-
 EXPOSE 3000
 
 CMD ["node", "dist/main.js"]

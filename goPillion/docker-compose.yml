@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   # --------------------
-  # DATABASES
+  # DATABASES (Unchanged)
   # --------------------
   redis:
     image: redis:7.2-alpine
@@ -75,10 +75,28 @@ services:
   # SERVICES
   # --------------------
 
+  api-gateway:
+    build:
+      context: ./
+      dockerfile: ./node-service/api-gateway/Dockerfile
+    container_name: api-gateway
+    restart: always
+    ports:
+      - "8000:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      HOST: 0.0.0.0
+      AUTH_SERVICE_URL: http://auth-service:3000
+      TRIP_SERVICE_URL: http://trip-service:3000
+      DRIVER_SERVICE_URL: http://driver-service:3000
+
   auth-service:
     build:
-      context: ./node-service/auth-service
-      dockerfile: Dockerfile
+      context: ./
+      dockerfile: ./node-service/auth-service/Dockerfile
     container_name: auth-service
     restart: always
     ports:
@@ -91,8 +109,8 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3000
-      DB_HOST: ${AUTH_DB_HOST}
-      DB_PORT: ${AUTH_DB_PORT}
+      DB_HOST: auth-postgres # Use container name, NOT ${AUTH_DB_HOST} if it is localhost
+      DB_PORT: 5432
       DB_NAME: ${AUTH_DB_NAME}
       DB_USERNAME: ${AUTH_DB_USERNAME}
       DB_PASSWORD: ${AUTH_DB_PASSWORD}
@@ -108,8 +126,8 @@ services:
 
   driver-service:
     build:
-      context: ./node-service/driver-service
-      dockerfile: Dockerfile
+      context: ./
+      dockerfile: ./node-service/driver-service/Dockerfile
     container_name: driver-service
     restart: always
     ports:
@@ -133,8 +151,8 @@ services:
 
   trip-service:
     build:
-      context: ./node-service/trip-service
-      dockerfile: Dockerfile
+      context: ./
+      dockerfile: ./node-service/trip-service/Dockerfile
     container_name: trip-service
     restart: always
     ports:
@@ -147,15 +165,15 @@ services:
       map-service:
         condition: service_started
       kafka:
-        condition: service_healthy # Updated from started to healthy
+        condition: service_healthy
     env_file:
       - .env
     environment:
       NODE_ENV: development
       PORT: 3000
       HOST: 0.0.0.0
-      TRIP_DB_HOST: ${TRIP_DB_HOST}
-      TRIP_DB_PORT: ${TRIP_DB_PORT}
+      TRIP_DB_HOST: trip-postgres
+      TRIP_DB_PORT: 5432
       TRIP_DB_NAME: ${TRIP_DB_NAME}
       TRIP_DB_USERNAME: ${TRIP_DB_USERNAME}
       TRIP_DB_PASSWORD: ${TRIP_DB_PASSWORD}
@@ -166,8 +184,8 @@ services:
 
   map-service:
     build:
-      context: ./node-service/map-service
-      dockerfile: Dockerfile
+      context: ./
+      dockerfile: ./node-service/map-service/Dockerfile
     container_name: map-service
     restart: always
     ports:
@@ -177,13 +195,13 @@ services:
     environment:
       OSRM_BASE_URL: ${OSRM_BASE_URL}
       NOMINATIM_BASE_URL: ${NOMINATIM_BASE_URL}
-      PORT: ${MAP_PORT}
-      MAP_HOST: ${MAP_HOST}
+      PORT: 3000 # Hardcoded to match container port
+      MAP_HOST: 0.0.0.0
 
   notification-service:
     build:
-      context: ./node-service/notification-service
-      dockerfile: Dockerfile
+      context: ./
+      dockerfile: ./node-service/notification-service/Dockerfile
     container_name: notification-service
     restart: always
     ports:
@@ -192,15 +210,15 @@ services:
       auth-service:
         condition: service_started
       redis:
-        condition: service_healthy # Updated from started to healthy
+        condition: service_healthy
       kafka:
-        condition: service_healthy # Updated from started to healthy
+        condition: service_healthy
     env_file:
       - .env
     environment:
       NODE_ENV: development
-      PORT: ${NOTIFICATION_PORT}
-      HOST: ${NOTIFICATION_HOST}
+      PORT: 3000 # Hardcoded to match container port
+      HOST: 0.0.0.0
       AUTH_SERVICE_URL: http://auth-service:3000/api
       NOTIFICATION_MONGO_URI: ${NOTIFICATION_MONGO_URI}
       REDIS_HOST: redis
@@ -209,7 +227,7 @@ services:
       FIREBASE_SERVICE_ACCOUNT: ${FIREBASE_SERVICE_ACCOUNT}
 
   # --------------------
-  # KAFKA
+  # KAFKA (Unchanged)
   # --------------------
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
@@ -238,7 +256,6 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
     healthcheck:
-      # This command ensures Kafka is actually responding before services try to connect
       test: [ "CMD-SHELL", "kafka-topics --bootstrap-server kafka:9092 --list || exit 1" ]
       interval: 10s
       timeout: 10s

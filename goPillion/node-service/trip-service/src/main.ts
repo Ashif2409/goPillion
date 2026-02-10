@@ -6,6 +6,7 @@ import sequelize from './db_connection/db_connection';
 import { driverTripRouter } from './routes/tripdriver.route';
 import { passengerTripRouter } from './routes/trippassenger.route';
 import { initKafkaProducer } from './kafka/producer';
+import { setupSwagger } from './swagger/swagger';
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(cors());
+setupSwagger(app);
 /* -------------------- Routes -------------------- */
 app.get('/', (req, res) => {
   res.send({ message: 'Hello API' });

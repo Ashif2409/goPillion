@@ -43,6 +43,9 @@ RUN npm install --only=production
 
 COPY --from=builder /app/message-service/dist ./dist
 
+# Copy source code for Swagger scanning
+COPY node-service/message-service/src ./src
+
 EXPOSE 3333
 
 CMD ["node", "dist/main.js"]

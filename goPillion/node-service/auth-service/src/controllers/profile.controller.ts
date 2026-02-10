@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import User from "../models/User";
 import Tokens from "../models/BlockToken";
 import { generateAccessToken, generateRefreshToken } from "../utils/generateToken";
-
+import redis from "../utils/redisUtils";
 
 export const getProfileController = async (req: Request, res: Response) => {
     try {
@@ -85,6 +85,10 @@ export const logoutController = async (req: Request, res: Response): Promise<any
             sameSite: "strict",
         });
 
+        // 1. Blacklist in Redis (7 days = 7 * 24 * 60 * 60 seconds)
+        await redis.set(`blacklist_${refreshToken}`, "true", "EX", 7 * 24 * 60 * 60);
+
+        // 2. Blacklist in DB (existing fallback)
         await Tokens.create({
             token: refreshToken
         });

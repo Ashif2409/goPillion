@@ -27,6 +27,10 @@ export const setupCentralSwagger = (app: Express) => {
                 {
                     url: "http://localhost:3003/api-docs.json",
                     name: "Notification Service"
+                },
+                {
+                    url: "http://localhost:3333/api-docs.json",
+                    name: "Message Service"
                 }
             ]
         }

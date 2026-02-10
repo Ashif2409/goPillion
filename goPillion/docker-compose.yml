@@ -92,6 +92,9 @@ services:
       AUTH_SERVICE_URL: http://auth-service:3000
       TRIP_SERVICE_URL: http://trip-service:3000
       DRIVER_SERVICE_URL: http://driver-service:3000
+      NOTIFICATION_SERVICE_URL: http://notification-service:3000
+      MAP_SERVICE_URL: http://map-service:3000
+      MESSAGE_SERVICE_URL: http://message-service:3333
 
   auth-service:
     build:
@@ -103,6 +106,8 @@ services:
       - "3001:3000"
     depends_on:
       auth-postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     env_file:
       - .env
@@ -123,6 +128,8 @@ services:
       REFRESH_TOKEN_EXPIRES_IN: ${REFRESH_TOKEN_EXPIRES_IN}
       USERNAME_ADMIN: ${USERNAME_ADMIN}
       PASSWORD_ADMIN: ${PASSWORD_ADMIN}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
 
   driver-service:
     build:
@@ -281,6 +288,15 @@ services:
       interval: 10s
       timeout: 10s
       retries: 10
+
+  nginx:
+    build:
+      context: .
+      dockerfile: node-service/api-gateway/nginx/Dockerfile.nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - api-gateway
 
 # --------------------
 # VOLUMES

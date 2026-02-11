@@ -1,12 +1,9 @@
-version: "3.9"
-
 services:
   # --------------------
   # DATABASES (Unchanged)
   # --------------------
   redis:
     image: redis:7.2-alpine
-    container_name: redis-server
     ports:
       - "6379:6379"
     volumes:
@@ -18,10 +15,11 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - gopillion-network
 
   auth-postgres:
     image: postgres:15
-    container_name: auth-postgres
     restart: always
     environment:
       POSTGRES_DB: ${AUTH_DB_NAME}
@@ -36,10 +34,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - gopillion-network
 
   trip-postgres:
     image: postgres:15
-    container_name: trip-postgres
     restart: always
     environment:
       POSTGRES_DB: ${TRIP_DB_NAME}
@@ -54,10 +53,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - gopillion-network
 
   driver-mongodb:
     image: mongo:7
-    container_name: driver-mongodb
     restart: always
     ports:
       - "27017:27017"
@@ -70,6 +70,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - gopillion-network
 
   # --------------------
   # SERVICES
@@ -79,7 +81,6 @@ services:
     build:
       context: ./
       dockerfile: ./node-service/api-gateway/Dockerfile
-    container_name: api-gateway
     restart: always
     ports:
       - "8000:3000"
@@ -95,12 +96,14 @@ services:
       NOTIFICATION_SERVICE_URL: http://notification-service:3000
       MAP_SERVICE_URL: http://map-service:3000
       MESSAGE_SERVICE_URL: http://message-service:3333
+      JWT_SECRET: ${JWT_SECRET}
+    networks:
+      - gopillion-network
 
   auth-service:
     build:
       context: ./
       dockerfile: ./node-service/auth-service/Dockerfile
-    container_name: auth-service
     restart: always
     ports:
       - "3001:3000"
@@ -114,7 +117,7 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3000
-      DB_HOST: auth-postgres # Use container name, NOT ${AUTH_DB_HOST} if it is localhost
+      DB_HOST: auth-postgres
       DB_PORT: 5432
       DB_NAME: ${AUTH_DB_NAME}
       DB_USERNAME: ${AUTH_DB_USERNAME}
@@ -130,12 +133,13 @@ services:
       PASSWORD_ADMIN: ${PASSWORD_ADMIN}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+    networks:
+      - gopillion-network
 
   driver-service:
     build:
       context: ./
       dockerfile: ./node-service/driver-service/Dockerfile
-    container_name: driver-service
     restart: always
     ports:
       - "3004:3000"
@@ -155,12 +159,13 @@ services:
       CLOUDINARY_KEY: ${CLOUDINARY_KEY}
       CLOUDINARY_SECRET: ${CLOUDINARY_SECRET}
       AUTH_SERVICE_URL: http://auth-service:3000/api
+    networks:
+      - gopillion-network
 
   trip-service:
     build:
       context: ./
       dockerfile: ./node-service/trip-service/Dockerfile
-    container_name: trip-service
     restart: always
     ports:
       - "3005:3000"
@@ -188,12 +193,13 @@ services:
       DRIVER_SERVICE_URL: http://driver-service:3000/api
       KAFKA_BROKERS: kafka:9092
       MAP_SERVICE_URL: http://map-service:3000/api/maps
+    networks:
+      - gopillion-network
 
   map-service:
     build:
       context: ./
       dockerfile: ./node-service/map-service/Dockerfile
-    container_name: map-service
     restart: always
     ports:
       - "3006:3000"
@@ -202,14 +208,15 @@ services:
     environment:
       OSRM_BASE_URL: ${OSRM_BASE_URL}
       NOMINATIM_BASE_URL: ${NOMINATIM_BASE_URL}
-      PORT: 3000 # Hardcoded to match container port
+      PORT: 3000
       MAP_HOST: 0.0.0.0
+    networks:
+      - gopillion-network
 
   notification-service:
     build:
       context: ./
       dockerfile: ./node-service/notification-service/Dockerfile
-    container_name: notification-service
     restart: always
     ports:
       - "3003:3000"
@@ -224,7 +231,7 @@ services:
       - .env
     environment:
       NODE_ENV: development
-      PORT: 3000 # Hardcoded to match container port
+      PORT: 3000
       HOST: 0.0.0.0
       AUTH_SERVICE_URL: http://auth-service:3000/api
       NOTIFICATION_MONGO_URI: ${NOTIFICATION_MONGO_URI}
@@ -232,12 +239,13 @@ services:
       REDIS_PORT: 6379
       KAFKA_BROKERS: kafka:9092
       FIREBASE_SERVICE_ACCOUNT: ${FIREBASE_SERVICE_ACCOUNT}
+    networks:
+      - gopillion-network
 
   message-service:
     build:
       context: ./
       dockerfile: ./node-service/message-service/Dockerfile
-    container_name: message-service
     restart: always
     ports:
       - "3333:3333"
@@ -253,23 +261,25 @@ services:
       MONGODB_URI: ${MESSAGE_MONGO_URI}
       JWT_SECRET: ${JWT_SECRET}
       AUTH_SERVICE_URL: http://auth-service:3000/api
+    networks:
+      - gopillion-network
 
   # --------------------
   # KAFKA (Unchanged)
   # --------------------
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
-    container_name: zookeeper
     restart: always
     ports:
       - "2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - gopillion-network
 
   kafka:
     image: confluentinc/cp-kafka:7.6.0
-    container_name: kafka
     restart: always
     depends_on:
       - zookeeper
@@ -288,6 +298,8 @@ services:
       interval: 10s
       timeout: 10s
       retries: 10
+    networks:
+      - gopillion-network
 
   nginx:
     build:
@@ -297,6 +309,12 @@ services:
       - "80:80"
     depends_on:
       - api-gateway
+    networks:
+      - gopillion-network
+
+networks:
+  gopillion-network:
+    driver: bridge
 
 # --------------------
 # VOLUMES

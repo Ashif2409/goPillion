@@ -9,27 +9,27 @@ export const setupCentralSwagger = (app: Express) => {
         swaggerOptions: {
             urls: [
                 {
-                    url: "http://localhost:3001/api-docs.json",
+                    url: "/api/auth/api-docs.json",
                     name: "Auth Service"
                 },
                 {
-                    url: "http://localhost:3005/api-docs.json",
+                    url: "/api/trips/api-docs.json",
                     name: "Trip Service"
                 },
                 {
-                    url: "http://localhost:3004/api-docs.json",
+                    url: "/api/driver/api-docs.json",
                     name: "Driver Service"
                 },
                 {
-                    url: "http://localhost:3006/api-docs.json",
+                    url: "/api/maps/api-docs.json",
                     name: "Map Service"
                 },
                 {
-                    url: "http://localhost:3003/api-docs.json",
+                    url: "/api/notifications/api-docs.json",
                     name: "Notification Service"
                 },
                 {
-                    url: "http://localhost:3333/api-docs.json",
+                    url: "/api/messages/api-docs.json",
                     name: "Message Service"
                 }
             ]

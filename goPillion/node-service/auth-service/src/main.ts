@@ -12,6 +12,7 @@ import { tokenRoutes } from "./routes/token.route";
 import { setupSwagger } from "./swagger/swagger";
 import { authLimiter } from "./middleware/rate_limiter.middleware";
 const app = express();
+app.set('trust proxy', 1);
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors());
@@ -35,4 +36,4 @@ app.use("/api/auth", otpRoutes);
 app.use("/api", tokenRoutes);
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
-app.listen(PORT,'0.0.0.0', () => console.log(`Server running on http://localhost:${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on http://localhost:${PORT}`));

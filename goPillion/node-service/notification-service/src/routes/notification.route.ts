@@ -6,6 +6,46 @@ const router = express.Router();
 
 /**
  * @swagger
+ * tags:
+ *   name: WebSockets
+ *   description: Real-time communication via WebSockets (Drivers & Passengers)
+ */
+
+/**
+ * @swagger
+ * /ws:
+ *   get:
+ *     summary: WebSocket Connection Information
+ *     description: |
+ *       Connect to the notification service via WebSocket for real-time updates.
+ *       
+ *       **Endpoint**: `ws://localhost:3003` (or via Gateway)
+ *       
+ *       **Authentication**:
+ *       - Requires **Bearer Token** in `Authorization` header  
+ *         `Authorization: Bearer <JWT_TOKEN>`
+ *       - Alternatively, token can be sent as query param or cookie (if enabled).
+ *       
+ *       ### Events Received by Client:
+ *       - `RIDE_REQUESTED`: Sent to drivers when a rider requests a trip.
+ *       - `RIDE_ACCEPTED`: Sent to rider when a driver accepts.
+ *       - `DRIVER_ARRIVED`: Sent to rider when driver is at pickup.
+ *       - `OTP`: Sent to rider for trip start verification.
+ *       - `TRIP_STARTED` / `TRIP_COMPLETED`: Status updates.
+ *       
+ *       ### Messages Sent by Client:
+ *       - Standard JSON: `{ "event": "...", "data": { ... } }`
+ *     tags: [WebSockets]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       101:
+ *         description: Switching Protocols (WebSocket)
+ */
+
+
+/**
+ * @swagger
  * /api/notifications:
  *   get:
  *     summary: Get all notifications for user

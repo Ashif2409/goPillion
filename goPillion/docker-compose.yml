@@ -17,44 +17,43 @@ services:
       retries: 5
     networks:
       - gopillion-network
+    # auth-postgres:
+    # image: postgres:15
+    #   restart: always
+    #   environment:
+    #     POSTGRES_DB: ${AUTH_DB_NAME}
+    #     POSTGRES_USER: ${AUTH_DB_USERNAME}
+    #     POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
+    #   ports:
+    #     - "5434:5432"
+    #   volumes:
+    #     - auth_pgdata:/var/lib/postgresql/data
+    #   healthcheck:
+    #     test: [ "CMD-SHELL", "pg_isready -U ${AUTH_DB_USERNAME} -d ${AUTH_DB_NAME}" ]
+    #     interval: 5s
+    #     timeout: 5s
+    #     retries: 5
+    #   networks:
+    #     - gopillion-network
 
-  auth-postgres:
-    image: postgres:15
-    restart: always
-    environment:
-      POSTGRES_DB: ${AUTH_DB_NAME}
-      POSTGRES_USER: ${AUTH_DB_USERNAME}
-      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
-    ports:
-      - "5434:5432"
-    volumes:
-      - auth_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${AUTH_DB_USERNAME} -d ${AUTH_DB_NAME}" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - gopillion-network
-
-  trip-postgres:
-    image: postgres:15
-    restart: always
-    environment:
-      POSTGRES_DB: ${TRIP_DB_NAME}
-      POSTGRES_USER: ${TRIP_DB_USERNAME}
-      POSTGRES_PASSWORD: ${TRIP_DB_PASSWORD}
-    ports:
-      - "5433:5432"
-    volumes:
-      - trip_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${TRIP_DB_USERNAME} -d ${TRIP_DB_NAME}" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - gopillion-network
+    # trip-postgres:
+    #   image: postgres:15
+    #   restart: always
+    #   environment:
+    #     POSTGRES_DB: ${TRIP_DB_NAME}
+    #     POSTGRES_USER: ${TRIP_DB_USERNAME}
+    #     POSTGRES_PASSWORD: ${TRIP_DB_PASSWORD}
+    #   ports:
+    #     - "5433:5432"
+    #   volumes:
+    #     - trip_pgdata:/var/lib/postgresql/data
+    #   healthcheck:
+    #     test: [ "CMD-SHELL", "pg_isready -U ${TRIP_DB_USERNAME} -d ${TRIP_DB_NAME}" ]
+    #     interval: 5s
+    #     timeout: 5s
+    #     retries: 5
+    #   networks:
+    #     - gopillion-network
 
   driver-mongodb:
     image: mongo:7
@@ -108,8 +107,8 @@ services:
     ports:
       - "3001:3000"
     depends_on:
-      auth-postgres:
-        condition: service_healthy
+      # ${AUTH_DB_HOST}:
+      #   condition: service_healthy
       redis:
         condition: service_healthy
     env_file:
@@ -117,8 +116,8 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3000
-      DB_HOST: auth-postgres
-      DB_PORT: 5432
+      DB_HOST: ${AUTH_DB_HOST}
+      DB_PORT: ${AUTH_DB_PORT}
       DB_NAME: ${AUTH_DB_NAME}
       DB_USERNAME: ${AUTH_DB_USERNAME}
       DB_PASSWORD: ${AUTH_DB_PASSWORD}
@@ -170,8 +169,6 @@ services:
     ports:
       - "3005:3000"
     depends_on:
-      trip-postgres:
-        condition: service_healthy
       auth-service:
         condition: service_started
       map-service:
@@ -184,8 +181,8 @@ services:
       NODE_ENV: development
       PORT: 3000
       HOST: 0.0.0.0
-      TRIP_DB_HOST: trip-postgres
-      TRIP_DB_PORT: 5432
+      TRIP_DB_HOST: ${TRIP_DB_HOST}
+      TRIP_DB_PORT: ${TRIP_DB_PORT}
       TRIP_DB_NAME: ${TRIP_DB_NAME}
       TRIP_DB_USERNAME: ${TRIP_DB_USERNAME}
       TRIP_DB_PASSWORD: ${TRIP_DB_PASSWORD}

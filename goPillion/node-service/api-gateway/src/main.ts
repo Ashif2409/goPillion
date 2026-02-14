@@ -6,7 +6,6 @@ import { rateLimit } from 'express-rate-limit';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import dotenv from 'dotenv';
 import { setupCentralSwagger } from './swagger/swagger';
-import { authMiddleware } from './middleware/auth.middleware';
 
 dotenv.config();
 
@@ -52,64 +51,53 @@ const PROXY_CONFIG = {
 
 // --- SERVICE PROXYING ---
 
-// --- SERVICE PROXYING ---
-
 const createServiceProxy = (target: string) => createProxyMiddleware({
   target,
   changeOrigin: true,
   pathRewrite: (path, req: any) => req.originalUrl,
 });
 
-// Helper for protected routes
-const protectedRoutes = (target: string) => [authMiddleware, createServiceProxy(target)];
-
 // 1. AUTH SERVICE (/api/auth, /api/profile)
-// Public
+// Public & Token Routes
 app.use('/api/auth/api-docs.json', createServiceProxy(PROXY_CONFIG.auth));
 app.use('/api/auth/request-otp', createServiceProxy(PROXY_CONFIG.auth));
 app.use('/api/auth/verify-otp', createServiceProxy(PROXY_CONFIG.auth));
 app.use('/api/auth/health', createServiceProxy(PROXY_CONFIG.auth));
-// Protected
-app.use('/api/auth/logout', ...protectedRoutes(PROXY_CONFIG.auth));
-app.use('/api/profile', ...protectedRoutes(PROXY_CONFIG.auth));
+app.use('/api/profile/admin', createServiceProxy(PROXY_CONFIG.auth));
+app.use('/api/verify-token', createServiceProxy(PROXY_CONFIG.auth));
+app.use('/api/refresh-token', createServiceProxy(PROXY_CONFIG.auth));
+
+// Profile and Logout (Auth handled by Auth Service)
+app.use('/api/auth/logout', createServiceProxy(PROXY_CONFIG.auth));
+app.use('/api/profile', createServiceProxy(PROXY_CONFIG.auth));
 
 // 2. TRIP SERVICE (/api/trips, /api/driver/trip, /api/passenger/trip)
-// Public
 app.use('/api/trips/api-docs.json', createServiceProxy(PROXY_CONFIG.trip));
-// Protected
-app.use('/api/trips', ...protectedRoutes(PROXY_CONFIG.trip));
-app.use('/api/driver/trip', ...protectedRoutes(PROXY_CONFIG.trip));
-app.use('/api/passenger/trip', ...protectedRoutes(PROXY_CONFIG.trip));
+app.use('/api/trips', createServiceProxy(PROXY_CONFIG.trip));
+app.use('/api/driver/trip', createServiceProxy(PROXY_CONFIG.trip));
+app.use('/api/passenger/trip', createServiceProxy(PROXY_CONFIG.trip));
 
 // 3. DRIVER SERVICE (/api/driver/kyc, /api/admin/kyc, /api/presence, /api/reviews)
-// Public
 app.use('/api/driver/api-docs.json', createServiceProxy(PROXY_CONFIG.driver));
-// Protected
-app.use('/api/driver/kyc', ...protectedRoutes(PROXY_CONFIG.driver));
-app.use('/api/admin/kyc', ...protectedRoutes(PROXY_CONFIG.driver));
-app.use('/api/presence', ...protectedRoutes(PROXY_CONFIG.driver));
-app.use('/api/reviews', ...protectedRoutes(PROXY_CONFIG.driver));
+app.use('/api/driver/kyc', createServiceProxy(PROXY_CONFIG.driver));
+app.use('/api/admin/kyc', createServiceProxy(PROXY_CONFIG.driver));
+app.use('/api/presence', createServiceProxy(PROXY_CONFIG.driver));
+app.use('/api/reviews', createServiceProxy(PROXY_CONFIG.driver));
 
 // 4. MAP SERVICE (/api/maps, /api/driver/location, /api/passenger/location)
-// Public
 app.use('/api/maps/api-docs.json', createServiceProxy(PROXY_CONFIG.map));
-// Protected
-app.use('/api/maps', ...protectedRoutes(PROXY_CONFIG.map));
-app.use('/api/driver/location', ...protectedRoutes(PROXY_CONFIG.map));
-app.use('/api/driver/nearby', ...protectedRoutes(PROXY_CONFIG.map));
-app.use('/api/passenger/location', ...protectedRoutes(PROXY_CONFIG.map));
+app.use('/api/maps', createServiceProxy(PROXY_CONFIG.map));
+app.use('/api/driver/location', createServiceProxy(PROXY_CONFIG.map));
+app.use('/api/driver/nearby', createServiceProxy(PROXY_CONFIG.map));
+app.use('/api/passenger/location', createServiceProxy(PROXY_CONFIG.map));
 
 // 5. NOTIFICATION SERVICE (/api/notifications)
-// Public
 app.use('/api/notifications/api-docs.json', createServiceProxy(PROXY_CONFIG.notification));
-// Protected
-app.use('/api/notifications', ...protectedRoutes(PROXY_CONFIG.notification));
+app.use('/api/notifications', createServiceProxy(PROXY_CONFIG.notification));
 
 // 6. MESSAGE SERVICE (/api/messages)
-// Public
 app.use('/api/messages/api-docs.json', createServiceProxy(PROXY_CONFIG.message));
-// Protected
-app.use('/api/messages', ...protectedRoutes(PROXY_CONFIG.message));
+app.use('/api/messages', createServiceProxy(PROXY_CONFIG.message));
 
 app.get('/', (req, res) => {
   res.send({ message: 'GoPillion API Gateway is Running' });

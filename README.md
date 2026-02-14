@@ -179,20 +179,14 @@ git clone https://github.com/Ashif2409/goPillion.git
 cd goPillion
 ```
 
-2. **Configure environment**
-```bash
-cp .env.example .env
-# Edit .env with your credentials
-```
-
-3. **Start services**
+2. **Start services**
 ```bash
 docker-compose up -d
 ```
 
-4. **Verify**
+3. **Verify**
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8000/
 ```
 
 ## Environment Variables

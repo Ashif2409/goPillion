@@ -1,5 +1,3 @@
-# goPillion
-goPillion is a lightweight, scalable bike ride-sharing application designed to connect riders and passengers in real time. The platform allows users to create ride requests, accept rides nearby, track live locations, and handle secure payments. It focuses on fast matching, low-latency communication, and a simple user experience .
 # GoPillion
 
 A high-performance, microservices-based ride-sharing platform specialized for pillion-based transport. Built with real-time rider matching, geospatial routing, and event-driven architecture.
@@ -116,21 +114,21 @@ flowchart TB
 
 ## Services
 
-### 🔑 Auth Service (Port 3001)
+###  Auth Service (Port 3001)
 Identity, Security & Session Management
 
 - OTP-based authentication via Twilio
 - JWT token generation and validation
 - Profile management
 
-### 🚗 Driver Service (Port 3004)
+###  Driver Service (Port 3004)
 Compliance, Records & Presence
 
 - Driver onboarding and KYC
 - Document management (License, RC, Insurance)
 - Online/Offline status tracking
 
-### 🚕 Trip Service (Port 3005)
+###  Trip Service (Port 3005)
 Business Logic & Ride Orchestration
 
 - Ride requests (immediate & scheduled)
@@ -138,26 +136,32 @@ Business Logic & Ride Orchestration
 - OTP-verified trip starts
 - Trip state management
 
-### 🗺️ Map Service (Port 3006)
+###  Map Service (Port 3006)
 Geospatial Intelligence
 
 - Route optimization via OSRM
 - Reverse geocoding via Nominatim
 - Distance/duration calculations
 
-### 🔔 Notification Service (Port 3003)
+###  Notification Service (Port 3003)
 Asynchronous Engagement
 
 - WebSocket notifications
 - Firebase push notifications
 - Event-driven alerts
 
-### 💬 Message Service (Port 3333)
+###  Message Service (Port 3333)
 Real-time Coordination
 
 - Trip-specific chat
 - Socket.io messaging
 - Message persistence
+
+## API Documentation
+
+- 📬 **Postman Collection & API Reference**  
+  https://documenter.getpostman.com/view/21537931/2sBXcBnhef
+
 
 ## Prerequisites
 
@@ -171,8 +175,8 @@ Real-time Coordination
 
 1. **Clone repository**
 ```bash
-git clone <repo-url>
-cd gopillion
+git clone https://github.com/Ashif2409/goPillion.git
+cd goPillion
 ```
 
 2. **Configure environment**
@@ -244,130 +248,7 @@ REDIS_HOST=redis
 REDIS_PORT=6379
 ```
 
-## API Endpoints
 
-### Authentication
-```bash
-# Request OTP
-POST /auth/request-otp
-{"mobile": "+1234567890"}
-
-# Verify OTP
-POST /auth/verify-otp
-{"mobile": "+1234567890", "otp": "123456"}
-
-# Complete Profile
-PATCH /users/profile
-Authorization: Bearer <token>
-{"name": "John", "email": "john@example.com"}
-```
-
-### Driver Operations
-```bash
-# Register Driver
-POST /drivers/register
-Authorization: Bearer <token>
-{"vehicleType": "bike", "vehicleNumber": "ABC123"}
-
-# Update Status
-PATCH /drivers/status
-Authorization: Bearer <token>
-{"isOnline": true}
-
-# Upload Document
-POST /drivers/documents
-Authorization: Bearer <token>
-Content-Type: multipart/form-data
-```
-
-### Trip Operations
-```bash
-# Request Ride
-POST /trips/request
-Authorization: Bearer <token>
-{
-  "pickupLocation": {"latitude": 28.6139, "longitude": 77.2090},
-  "dropLocation": {"latitude": 28.5355, "longitude": 77.3910}
-}
-
-# Accept Trip
-POST /trips/:tripId/accept
-Authorization: Bearer <token>
-
-# Start Trip
-POST /trips/:tripId/start
-Authorization: Bearer <token>
-{"otp": "1234"}
-
-# Complete Trip
-POST /trips/:tripId/complete
-Authorization: Bearer <token>
-```
-
-### Map Operations
-```bash
-# Get Route
-POST /maps/route
-Authorization: Bearer <token>
-{
-  "origin": {"latitude": 28.6139, "longitude": 77.2090},
-  "destination": {"latitude": 28.5355, "longitude": 77.3910}
-}
-
-# Reverse Geocode
-GET /maps/reverse-geocode?latitude=28.6139&longitude=77.2090
-Authorization: Bearer <token>
-```
-
-### Notifications
-```bash
-# Get Notifications
-GET /notifications
-Authorization: Bearer <token>
-
-# Mark as Read
-PATCH /notifications/:id/read
-Authorization: Bearer <token>
-
-# Delete Notification
-DELETE /notifications/:id
-Authorization: Bearer <token>
-```
-
-### Messaging
-```bash
-# Send Message
-POST /messages
-Authorization: Bearer <token>
-{"tripId": "uuid", "receiverId": "uuid", "text": "Hello"}
-
-# Get Chat History
-GET /trips/:tripId/messages
-Authorization: Bearer <token>
-```
-
-## WebSocket Events
-
-### Notification Service (ws://localhost:3003)
-```javascript
-const socket = io('ws://localhost:3003', {
-  auth: { token: 'jwt-token' }
-});
-
-// Events: notification, ride_requested, ride_accepted, 
-//         ride_started, ride_completed, driver_nearby
-```
-
-### Message Service (ws://localhost:3333)
-```javascript
-const socket = io('ws://localhost:3333', {
-  auth: { token: 'jwt-token' }
-});
-
-socket.emit('join-trip', { tripId: 'uuid' });
-
-// Events: new-message, message-sent, typing
-```
 
 ## Service Ports
 

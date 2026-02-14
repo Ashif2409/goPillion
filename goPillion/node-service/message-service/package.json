@@ -1,0 +1,75 @@
+{
+  "name": "@node-service/message-service",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "targets": {
+      "prune-lockfile": {
+        "dependsOn": [
+          "build"
+        ],
+        "cache": true,
+        "executor": "@nx/js:prune-lockfile",
+        "outputs": [
+          "{workspaceRoot}/message-service/dist/package.json",
+          "{workspaceRoot}/message-service/dist/package-lock.json"
+        ],
+        "options": {
+          "buildTarget": "build"
+        }
+      },
+      "copy-workspace-modules": {
+        "dependsOn": [
+          "build"
+        ],
+        "cache": true,
+        "outputs": [
+          "{workspaceRoot}/message-service/dist/workspace_modules"
+        ],
+        "executor": "@nx/js:copy-workspace-modules",
+        "options": {
+          "buildTarget": "build"
+        }
+      },
+      "prune": {
+        "dependsOn": [
+          "prune-lockfile",
+          "copy-workspace-modules"
+        ],
+        "executor": "nx:noop"
+      },
+      "serve": {
+        "continuous": true,
+        "executor": "@nx/js:node",
+        "defaultConfiguration": "development",
+        "dependsOn": [
+          "build"
+        ],
+        "options": {
+          "buildTarget": "@node-service/message-service:build",
+          "runBuildTargetDependencies": false
+        },
+        "configurations": {
+          "development": {
+            "buildTarget": "@node-service/message-service:build:development"
+          },
+          "production": {
+            "buildTarget": "@node-service/message-service:build:production"
+          }
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "mongoose": "^9.2.0",
+    "dotenv": "^16.0.3",
+    "kafkajs": "^2.2.0",
+    "jsonwebtoken": "^9.0.0",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2",
+    "axios": "^1.4.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
+  }
+}
